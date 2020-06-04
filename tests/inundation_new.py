@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 
 import numpy as np
-import pandas as pd
 from numba import njit, typeof, typed, types
 import argparse
-from raster import Raster
+
 import gc
-from tqdm import tqdm
 from subprocess import run
 from os import remove
 from os.path import splitext,isfile,basename
@@ -16,106 +14,28 @@ import json
 def inundateREM(remFileName,catchmentsFileName,forecast_fileName,src_fileName,cross_walk_table_fileName,
                 inundation_raster_fileName=None,inundation_polygon_fileName=None,depths_fileName=None,stages_fileName=None):
 
-    print("Loading files ..")
+    # stageGrid and flat catchments
     catchments = Raster(catchmentsFileName)
-
-    # load forecast
-    # forecast = pd.read_csv(forecast_fileName)
-    # forecast = forecast.astype({'feature_id' : int , 'discharge' : float})
-
-    # load SRC
-    # src = pd.read_csv(src_fileName,skip_blank_lines=True,dtype=object)
-    # src = src[['feature_id','HydroID','Stage','Discharge (m3s-1)']]
-    # src = src.astype({'feature_id': int,'HydroID' : int,'Stage' : float,'Discharge (m3s-1)' : float})
-
-    # catchmentStagesDict = {}
-    # for fid in tqdm(forecast['feature_id']):
-    #     discharge = float(forecast['discharge'][forecast['feature_id'] == fid])
-    #     indices_of_fid = src['feature_id'] == fid
-    #
-    #     # if not indices_of_fid.any():
-    #     #     continue
-    #
-    #     hydroIDs = np.unique(src['HydroID'][indices_of_fid])
-    #     for hid in hydroIDs:
-    #
-    #         relevant_entries = src[:][(src['HydroID'] == hid) & (src['feature_id'] == fid)]
-    #         relevant_entries = relevant_entries.reset_index()
-    #         indices_that_are_lower = list(relevant_entries['Discharge (m3s-1)'] < discharge)
-    #         # print(indices_that_are_lower)
-    #         is_index_last = indices_that_are_lower[-1]
-    #         # print(list(np.where(indices_that_are_lower)[0]))
-    #         index_of_lower = np.where(indices_that_are_lower)[0][-1]
-    #         index_of_upper = index_of_lower + 1
-    #
-    #         Q_lower = relevant_entries['Discharge (m3s-1)'][index_of_lower]
-    #         h_lower = relevant_entries['Stage'][index_of_lower]
-    #
-    #         if is_index_last:
-    #             h = h_lower
-    #             catchmentStagesDict[fid] = h
-    #             continue
-    #
-    #         Q_upper = relevant_entries['Discharge (m3s-1)'][index_of_upper]
-    #         h_upper = relevant_entries['Stage'][index_of_upper]
-    #
-    #         # linear interpolation
-    #         h = h_lower + (discharge - Q_lower) * ((h_upper - h_lower) / (Q_upper - Q_lower))
-    #
-    #
-    #         catchmentStagesDict[hid] = h
-
-            # interpolate h_lower * (Q_forecast / Q_lower)
-
-    # with open(catchmentStageDictFileName, 'rb') as handle:
-        # catchmentStagesDict = pickle.load(handle)
-
-    # stageGrid
     catchmentsBoolean = catchments.array != catchments.ndv
     flat_catchments = catchments.array[catchmentsBoolean].ravel()
     flat_stage_grid = flat_catchments.copy()
-    flat_stage_grid = flat_stage_grid.astype(np.float64)
+    flat_stage_grid = flat_stage_grid.astype(np.float32)
     flat_stage_grid[:] = 0
 
-    # convert to numba dictionary
-    # print("Numba Dictionary Conversion")
-    # d1_catchmentStagesDict = typed.Dict.empty(types.int32,types.float64)
-    # for k, v in catchmentStagesDict.items():
-    #     k = types.int32(k) ; v = types.float32(v)
-    #     d1_catchmentStagesDict[k] = v
-
-    # del catchmentStagesDict, catchments
-    # del catchments, src, forecast, relevant_entries, hydroIDs, indices_of_fid, indices_that_are_lower, catchmentStagesDict
     del catchments
     gc.collect()
-
-    print('Interpolating every forecast feature id and constructing catchments stage dictionary')
+    
+    # make a catchment,stages numba dictionary
     catchmentStagesDict = __make_catchment_stages_dictionary(forecast_fileName,src_fileName,cross_walk_table_fileName)
 
-    @njit
-    def make_stage_grid(flat_stage_grid,catchmentStagesDict,flat_catchments):
-
-        for i,cm in enumerate(flat_catchments):
-            if cm in catchmentStagesDict:
-                flat_stage_grid[i] = catchmentStagesDict[cm]
-
-
-        return(flat_stage_grid)
-
-
-    print('starting grid')
-    flat_stage_grid = make_stage_grid(flat_stage_grid,catchmentStagesDict,flat_catchments)
+    # make a flat stages grid
+    flat_stage_grid = __make_stage_grid(flat_stage_grid,catchmentStagesDict,flat_catchments)
 
     del flat_catchments, catchmentStagesDict
     gc.collect()
 
-    print("Stage grid reshaping")
+    # build stages raster
     rem = Raster(remFileName)
-
-    # rem.array[catchmentsBoolean] -= 0.5
-    # boolean_to_zero = np.logical_and(catchmentsBoolean,rem.array < 0)
-    # rem.array[boolean_to_zero] = 0
-
     stage_grid = rem.copy()
     stage_grid.array = stage_grid.array.astype(np.float32)
     stage_grid.ndv = -9999
@@ -146,8 +66,10 @@ def inundateREM(remFileName,catchmentsFileName,forecast_fileName,src_fileName,cr
     inundation_grid.array[nonInundatedLocations] = 1
     inundation_grid.array[inundatedLocations] = 2
 
-    if inundation_raster_fileName is not None:
-        inundation_grid.writeRaster(inundation_raster_fileName)
+    if inundation_raster_fileName is None:
+        inundation_raster_fileName = "inundation_temp.tif"
+    inundation_grid.writeRaster(inundation_raster_fileName)
+    
 
     if inundation_polygon_fileName is not None:
         print("Polygonize inundation raster")
@@ -168,6 +90,8 @@ def inundateREM(remFileName,catchmentsFileName,forecast_fileName,src_fileName,cr
         run(polyCommand)
 
         remove("inundation_catchments.tif")
+        if inundation_raster_fileName == 'inundation_temp.tif':
+            remove(inundation_raster_fileName)
         # inundation_grid.array[nonInundatedLocations] = inundation_grid.ndv
         # inundation_grid.polygonize('tests/inundation.gpkg',vector_driver='GPKG',layer_name='inundation',verbose=True)
 
@@ -181,6 +105,16 @@ def inundateREM(remFileName,catchmentsFileName,forecast_fileName,src_fileName,cr
         depths_grid.writeRaster(depths_fileName)
 
     # flat_stage_grid = flat_stage_grid.reshape(catchments.nrows,catchments.ncols)
+
+@njit
+def __make_stage_grid(flat_stage_grid,catchmentStagesDict,flat_catchments):
+
+    for i,cm in enumerate(flat_catchments):
+        if cm in catchmentStagesDict:
+            flat_stage_grid[i] = catchmentStagesDict[cm]
+
+
+    return(flat_stage_grid)
 
 def __make_catchment_stages_dictionary(forecast_fileName,src_fileName,cross_walk_table_fileName):
     """ test """

@@ -4,13 +4,13 @@ import pandas as pd
 import geopandas as gpd
 import sys
 
-orig_table = pd.read_csv(sys.argv[1])
+orig_table = pd.read_csv(sys.argv[1],low_memory=False)
+hucCode=sys.argv[2]
 # esri_cross_walk_table = pd.read_csv(sys.argv[2])
 # cross_walk_table_fileName = sys.argv[3]
 
 orig_flows = ['E_Q_10PCT','E_Q_01PCT','E_Q_0_2PCT']
 flows = ['10yr','100yr','500yr']
-huc6code = 120903
 dischargeMultiplier = 0.3048 ** 3
 
 for i,og in enumerate(orig_flows):
@@ -25,7 +25,7 @@ for i,og in enumerate(orig_flows):
 
     forecast['discharge'] = forecast['discharge'] * dischargeMultiplier
 
-    forecast.to_csv("forecast_{}_{}.csv".format(huc6code,flows[i]),index=False)
+    forecast.to_csv("forecast_{}_{}.csv".format(hucCode,flows[i]),index=False)
 
 # cross_walk_table = esri_flows[['HydroID','feature_id']]
 # cross_walk_table = cross_walk_table.dropna()
