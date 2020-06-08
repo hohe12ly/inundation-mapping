@@ -15,8 +15,9 @@ def __vprint(message,verbose=False):
 def __getDiffVal(validation,analysisExtents):
 
     diffVal = gpd.overlay(analysisExtents,validation,how='difference')
-    diffVal = diffVal.explode().reset_index(drop=True)
-    diffVal = diffVal.loc[~diffVal.is_empty]
+    diffVal = diffVal.reset_index(drop=True)
+    #diffVal = diffVal.loc[diffVal.geometry.geom_type == 'Polygon',:]
+    diffVal = diffVal.loc[~diffVal.is_empty,:]
     diffVal = diffVal.reset_index(drop=True)
 
     return(diffVal)
@@ -93,6 +94,11 @@ def __fishnet_gdf(gdf, threshold,verbose):
 
     return(gdf)
 
+def __preprocess_cross_sections(crossSections,flows,test_case_level,crossSections_layerName=None,verbose=True):
+    
+    if isinstance(crossSections,str): crossSections = gpd.read_file(crossSections,crossSections_layerName)
+    
+
 def __preprocess_extents(projection,analysisExtents,exclusionMask=None,split_threshold=None,verbose=True):
 
     __vprint('Analysis Extents ...',verbose)
@@ -157,14 +163,29 @@ def __preprocess_validation(projection,validation,analysisExtents,test_case_leve
     __vprint('  Buffering',verbose)
     validation = __fixGeometry_gdf(validation)
 
+    # split
+    __vprint('  Splitting',verbose)
+    if split_threshold is not None: validation = __fishnet_gdf(validation,split_threshold,verbose)
+    
+    # remove non-polygons
+    validation = validation.loc[validation.geometry.geom_type == 'Polygon',:]
+
     # Remove empties 
     __vprint('  Removing empties',verbose)
     validation = validation.loc[~validation.is_empty]
     validation = validation.reset_index(drop=True)
-
-    # split
-    __vprint('  Splitting',verbose)
-    if split_threshold is not None: validation = __fishnet_gdf(validation,split_threshold,verbose)
+    
+    # explode
+    __vprint('  Exploding',verbose)
+    validation = validation.explode().reset_index(level=1,drop=True)
+    
+    # round precisons
+    __vprint('  Rounding',verbose)
+    validation = __roundGeometry_gdf(validation,geometry_precision)
+    
+    # fix geometries
+    __vprint('  Buffering',verbose)
+    validation = __fixGeometry_gdf(validation)
 
     # clip validation to analysisExtents
     __vprint('  Clipping validation',verbose)
@@ -188,6 +209,7 @@ def preprocess_test_case(validation,analysisExtents,projection,test_case_directo
         validation = [__preprocess_validation(projection,val,analysisExtents,tc_level,split_threshold=split_threshold,simplify_tolerance=simplify_tolerance,geometry_precision=geometry_precision,verbose=verbose) for tc_level,val in zip(test_case_levels,validation)]
     
     __vprint('Validation difference ...',verbose)
+
     ## diff validation
     if isinstance(validation,list):
         diffVal = [__getDiffVal(val,analysisExtents) for val in validation]
@@ -197,6 +219,7 @@ def preprocess_test_case(validation,analysisExtents,projection,test_case_directo
     # build file paths and names
     # validation
     validation_directory = join(test_case_directory,test_case_name,'validation')
+    print(validation_directory)
     makedirs(validation_directory, exist_ok=True)
 
     analysisExtents_filename = join(validation_directory,'analysisExtents.gpkg')
