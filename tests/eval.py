@@ -6,17 +6,20 @@ import argparse
 from os import makedirs
 from os.path import join,splitext
 from tqdm import tqdm
-from shapely.geometry import mapping,shape,box
+from shapely.geometry import mapping,shape,boxi
+from shapely.errors import TopologicalError:
 
 def __vprint(message,verbose=False):
     if verbose:
         print(message)
 
 def __getDiffVal(validation,analysisExtents):
-
-    diffVal = gpd.overlay(analysisExtents,validation,how='difference')
+    
+    try:
+        diffVal = gpd.overlay(analysisExtents,validation,how='difference')
+    except TopologicalError:
+        return(None)
     diffVal = diffVal.reset_index(drop=True)
-    #diffVal = diffVal.loc[diffVal.geometry.geom_type == 'Polygon',:]
     diffVal = diffVal.loc[~diffVal.is_empty,:]
     diffVal = diffVal.reset_index(drop=True)
 
@@ -58,7 +61,6 @@ def __roundGeometry_gdf(gdf, precision=4):
                 result.append(around(coord, precision))
         return(result)
 
-
     newGeoms = [None] * len(gdf)
     for i,geom in enumerate(gdf.geometry):
         geojson = mapping(geom)
@@ -67,7 +69,7 @@ def __roundGeometry_gdf(gdf, precision=4):
 
     gdf = gpd.GeoDataFrame({'geometry' : newGeoms},crs=gdf.crs,geometry='geometry')
 
-    return gdf
+    return (gdf)
 
 def __fishnet_gdf(gdf, threshold,verbose):
 
@@ -191,7 +193,11 @@ def __preprocess_validation(projection,validation,analysisExtents,test_case_leve
     __vprint('  Clipping validation',verbose)
 
     if not validation.geometry.intersects(analysisExtents).all():
-        validation = gpd.overlay(validation,analysisExtents,how='intersection')
+        try:
+            validation = gpd.overlay(validation,analysisExtents,how='intersection')
+        except TopologicalError:
+            return(None)
+
         validation = validation.explode().reset_index(drop=True)
 
     return(validation)
@@ -219,7 +225,6 @@ def preprocess_test_case(validation,analysisExtents,projection,test_case_directo
     # build file paths and names
     # validation
     validation_directory = join(test_case_directory,test_case_name,'validation')
-    print(validation_directory)
     makedirs(validation_directory, exist_ok=True)
 
     analysisExtents_filename = join(validation_directory,'analysisExtents.gpkg')
