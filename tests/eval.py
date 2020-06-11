@@ -6,12 +6,33 @@ import argparse
 from os import makedirs
 from os.path import join,splitext
 from tqdm import tqdm
-from shapely.geometry import mapping,shape,boxi
-from shapely.errors import TopologicalError:
+from shapely.geometry import mapping,shape,box
+from shapely.errors import TopologicalError
+import pygeos as pg
 
 def __vprint(message,verbose=False):
     if verbose:
         print(message)
+
+
+def to_pygeos_polygons(gdf):
+
+    polys = [None] * len(gdf)
+    for idx,g in enumerate(gdf.geometry):
+
+        exterior = [(round(x,precision),round(y,precision)) for x,y in zip(*g.exterior.coords.xy)]
+
+        if g.interiors:
+            interiors = [None] * len(g.interiors)
+            for i,it in enumerate(g.interiors):
+                interiors[i] = pg.linearrings([(round(x,precision),round(y,precision)) for x,y in zip(*it.coords.xy)])
+        else:
+            interiors = None
+
+        polys[idx] = pg.polygons(exterior,interiors)
+
+    return(polys)
+
 
 def __getDiffVal(validation,analysisExtents):
     
@@ -96,19 +117,45 @@ def __fishnet_gdf(gdf, threshold,verbose):
 
     return(gdf)
 
-def __preprocess_cross_sections(crossSections,flows,test_case_level,crossSections_layerName=None,verbose=True):
-    
-    if isinstance(crossSections,str): crossSections = gpd.read_file(crossSections,crossSections_layerName)
-    
+def __fishnet_pg_polygons(geom, threshold,verbose):
 
-def __preprocess_extents(projection,analysisExtents,exclusionMask=None,split_threshold=None,verbose=True):
+    bounds = pg.get_coordinates(pg.boundary(geom))
+    
+    xmin = int(bounds[0,:] // threshold)
+    xmax = int(bounds[2,:] // threshold)
+    ymin = int(bounds[1,:] // threshold)
+    ymax = int(bounds[3,:] // threshold)
+    ncols = int(xmax - xmin + 1)
+    nrows = int(ymax - ymin + 1)
+    
+    result = np.array([])
+    for i in tqdm(range(xmin, xmax+1),disable=(not verbose)):
+        for j in range(ymin, ymax+1):
+            b = pg.box(i*threshold, j*threshold, (i+1)*threshold, (j+1)*threshold)
+            g = pg.intersection(geom,b)
+            result = np.append(result,g)
+
+    return(result)
+
+
+def __preprocess_cross_sections(crossSections,flows,analysisExtents,crossSections_layerName=None,verbose=True):
+    
+    if isinstance(crossSections,str): crossSections = gpd.read_file(crossSections,layer=crossSections_layerName,mask=analysisExtents)
+    if isinstance(flows,str): flows = gpd.read_file(flows,mask=analysisExtents)
+
+    intersections = gpd.overlay(crossSections,flows,how='intersection')
+
+    return(intersections)
+
+
+def __preprocess_extents(projection,analysisExtents,analysisExtents_layername=None,exclusionMask=None,exclusionMask_layername=None,split_threshold=None,verbose=True):
 
     __vprint('Analysis Extents ...',verbose)
 
     # load files
     __vprint('  Loading',verbose)
-    if isinstance(analysisExtents,str): analysisExtents = gpd.read_file(analysisExtents)
-    if (exclusionMask is not None) & isinstance(exclusionMask,str): exclusionMask = gpd.read_file(exclusionMask,mask=analysisExtents) 
+    if isinstance(analysisExtents,str): analysisExtents = gpd.read_file(analysisExtents,analysisExtents_layername)
+    if (exclusionMask is not None) & isinstance(exclusionMask,str): exclusionMask = gpd.read_file(exclusionMask,mask=analysisExtents,layer=exclusionMask_layername) 
 
     # project
     __vprint('  Projecting',verbose)
@@ -181,31 +228,45 @@ def __preprocess_validation(projection,validation,analysisExtents,test_case_leve
     __vprint('  Exploding',verbose)
     validation = validation.explode().reset_index(level=1,drop=True)
     
+    # Convert to Pygeos
+    validation = to_pygeos_polygons(validation)
+    analysisExtents = to_pygeos_polygons(analysisExtents)
+
     # round precisons
-    __vprint('  Rounding',verbose)
-    validation = __roundGeometry_gdf(validation,geometry_precision)
+    #__vprint('  Rounding',verbose)
+    #validation = __roundGeometry_gdf(validation,geometry_precision)
     
     # fix geometries
     __vprint('  Buffering',verbose)
-    validation = __fixGeometry_gdf(validation)
+    #validation = __fixGeometry_gdf(validation)
+    validation = pg.buffer(validation,0)
+
+    # tree building
+    valTree = pg.STRtree(validation)
 
     # clip validation to analysisExtents
     __vprint('  Clipping validation',verbose)
 
-    if not validation.geometry.intersects(analysisExtents).all():
-        try:
-            validation = gpd.overlay(validation,analysisExtents,how='intersection')
-        except TopologicalError:
-            return(None)
+    #if not validation.geometry.intersects(analysisExtents).all():
+    #    try:
+    #        validation = gpd.overlay(validation,analysisExtents,how='intersection')
+    #    except TopologicalError:
+    #        return(None)
 
-        validation = validation.explode().reset_index(drop=True)
+    #    validation = validation.explode().reset_index(drop=True)
+    query = valTree.query_bulk(analysisExtents,predicate='intersects')
+    validation = pg.intersection(analysisExtents[query[0,:]],validation[query[1,:]])
+
 
     return(validation)
 
-def preprocess_test_case(validation,analysisExtents,projection,test_case_directory,test_case_name,test_case_levels,exclusionMask=None,split_threshold=None,simplify_tolerance=None,geometry_precision=2,verbose=True):
+def preprocess_test_case(validation,analysisExtents,crossSections,flows,crossSections_layerName,projection,test_case_directory,test_case_name,test_case_levels,exclusionMask=None,split_threshold=None,simplify_tolerance=None,geometry_precision=2,verbose=True):
 
     __vprint('Preprocess test case ... {}'.format(test_case_name),verbose)
 
+    # cross sections
+    crossSections = __preprocess_cross_sections(cs,flows,crossSections_layerName=crossSections_layerName,verbose=verbose)
+    
     # analysis extents
     analysisExtents = __preprocess_extents(projection,analysisExtents,exclusionMask=exclusionMask,split_threshold=split_threshold,verbose=verbose)
 
@@ -228,20 +289,26 @@ def preprocess_test_case(validation,analysisExtents,projection,test_case_directo
     makedirs(validation_directory, exist_ok=True)
 
     analysisExtents_filename = join(validation_directory,'analysisExtents.gpkg')
+    crossSections_filename = join(validation_directory,'crossSections.gpkg')
     validation_filename_template = join(validation_directory,'validation_{}.gpkg')
     diffVal_filename_template = join(validation_directory,'diffVal_{}.gpkg')
-
+    
 	# write to file
     __vprint('Writing to files ...',verbose)
     analysisExtents.to_file(analysisExtents_filename,driver=__getVectorDriver(analysisExtents_filename)) 
+    crossSections.to_file(crossSections_filename,driver=__getVectorDriver(crossSections_filename))
     
     if isinstance(validation,list):
         for l,dv in zip(test_case_levels,diffVal):
-            diffVal_filename = diffVal_filename_template.format(l)
-            dv.to_file(diffVal_filename,driver=__getVectorDriver(diffVal_filename))
+            if dv is not None:
+                diffVal_filename = diffVal_filename_template.format(l)
+                dv.to_file(diffVal_filename,driver=__getVectorDriver(diffVal_filename))
+            else:
+                print("Not writing {test_case_name}, {l} due to Topology error")
         for l,v in zip(test_case_levels,validation):
-            validation_filename = validation_filename_template.format(l)
-            v.to_file(validation_filename,driver=__getVectorDriver(validation_filename))
+            if v is not None:
+                validation_filename = validation_filename_template.format(l)
+                v.to_file(validation_filename,driver=__getVectorDriver(validationi_filename))
     else:
         diffVal_filename = diffVal_filename_template.format(l)
         diffVal.to_file(diffVal_filename,driver=__getVectorDriver(diffVal_filename))
@@ -254,6 +321,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Preprocess and add test case to library')
     parser.add_argument('-v','--validation', help='DEM to use within project path', required=True, nargs='*')
     parser.add_argument('-a','--analysis-extents',help='Pixel based watersheds raster to use within project path',required=True)
+    parser.add_argument('-c','--cross_sections',help='Pixel based watersheds raster to use within project path',required=True)
+    parser.add_argument('-w','--flows',help='Pixel based watersheds raster to use within project path',required=True)
+    parser.add_argument('-y','--cross_section_layer',help='Pixel based watersheds raster to use within project path',required=True)
     parser.add_argument('-p','--projection',help='Output REM raster',required=True)
     parser.add_argument('-d','--test-case-directory',help='Output REM raster',required=True)
     parser.add_argument('-n','--test-case-name',help='Output REM raster',required=True)
@@ -270,6 +340,9 @@ if __name__ == '__main__':
     # rename variable inputs
     validation = args['validation']
     analysisExtents = args['analysis_extents']
+    crossSections = args['cross_sections']
+    flows = args['flows']
+    crossSections_layerName = args['cross_section_layer']
     projection = args['projection']
     test_case_directory = args['test_case_directory']
     test_case_name = args['test_case_name']
@@ -280,4 +353,4 @@ if __name__ == '__main__':
     geometry_precision = args['geometry_precision']
     verbose = args['quiet']
     
-    preprocess_test_case(validation,analysisExtents,projection,test_case_directory,test_case_name,test_case_levels,exclusionMask=exclusionMask,split_threshold=split_threshold,simplify_tolerance=simplify_tolerance,geometry_precision=geometry_precision,verbose=verbose)
+    preprocess_test_case(validation,analysisExtents,crossSections,flows,crossSections_layerName,projection,test_case_directory,test_case_name,test_case_levels,exclusionMask=exclusionMask,split_threshold=split_threshold,simplify_tolerance=simplify_tolerance,geometry_precision=geometry_precision,verbose=verbose)
