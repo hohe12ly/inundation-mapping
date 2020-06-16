@@ -8,30 +8,37 @@ from os.path import join,splitext
 from tqdm import tqdm
 from shapely.geometry import mapping,shape,box
 from shapely.errors import TopologicalError
+from shapely.wkb import dumps,loads
 import pygeos as pg
 
 def __vprint(message,verbose=False):
     if verbose:
         print(message)
 
+def __gdf_to_pg(gdf):
 
-def to_pygeos_polygons(gdf):
+    gdf = gdf.explode().reset_index(level=1,drop=True)
+    wkb_list = [g.wkb for g in gdf.geometry]
+    pg_geom = pg.from_wkb(wkb_list)
+    
+    return(pg_geom)
 
-    polys = [None] * len(gdf)
-    for idx,g in enumerate(gdf.geometry):
+def __pg_to_gdf(pg_geom,crs):
 
-        exterior = [(round(x,precision),round(y,precision)) for x,y in zip(*g.exterior.coords.xy)]
+    wkb_array = pg.to_wkb(pg_geom)
+    
+    gdf = gpd.GeoDataFrame({'geometry' : [loads(g) for g in wkb_array]},
+                           crs=crs,
+                           geometry='geometry')
 
-        if g.interiors:
-            interiors = [None] * len(g.interiors)
-            for i,it in enumerate(g.interiors):
-                interiors[i] = pg.linearrings([(round(x,precision),round(y,precision)) for x,y in zip(*it.coords.xy)])
-        else:
-            interiors = None
+    return(shapely_list)
 
-        polys[idx] = pg.polygons(exterior,interiors)
-
-    return(polys)
+def __roundGeometry_pg(pg_geom,precision):
+    
+    round_pg = lambda g : round(g,precision)
+    rounded_pg = pg.apply(pg_geom,round_pg)
+    
+    return(rounded_pg)
 
 
 def __getDiffVal(validation,analysisExtents):
@@ -117,7 +124,7 @@ def __fishnet_gdf(gdf, threshold,verbose):
 
     return(gdf)
 
-def __fishnet_pg_polygons(geom, threshold,verbose):
+def __fishnet_pg(geom, threshold,verbose):
 
     bounds = pg.get_coordinates(pg.boundary(geom))
     
@@ -138,15 +145,30 @@ def __fishnet_pg_polygons(geom, threshold,verbose):
     return(result)
 
 
-def __preprocess_cross_sections(crossSections,flows,analysisExtents,crossSections_layerName=None,verbose=True):
+def __preprocess_forecasts(crossSections,flows,analysisExtents,crossSections_layerName=None,verbose=True):
     
     if isinstance(crossSections,str): crossSections = gpd.read_file(crossSections,layer=crossSections_layerName,mask=analysisExtents)
     if isinstance(flows,str): flows = gpd.read_file(flows,mask=analysisExtents)
 
     intersections = gpd.overlay(crossSections,flows,how='intersection')
 
-    return(intersections)
+    orig_flows = [('10yr','E_Q_10PCT'),('100yr','E_Q_01PCT'),('500yr','E_Q_0_2PCT')]
+    dischargeMultiplier = 0.3048 ** 3
 
+    forecasts = [None] * len(new_flows)
+    for i,(nf,of) in enumerate(flows,orig_flows):
+        forecast = intersections[['feature_id',of]]
+        forecast = forecast.rename(columns={of : 'discharge'})
+        forecast = forecast.astype({'feature_id' : int , 'discharge' : float})
+
+        forecast = forecast.groupby('feature_id').median()
+        forecast = forecast.reset_index(level=0)
+
+        forecast['discharge'] = forecast['discharge'] * dischargeMultiplier
+        #forecast.to_csv("forecast_{}_{}.csv".format(hucCode,nf),index=False)
+        forecasts[i] = forecast
+
+    return(forecasts,crossSections)
 
 def __preprocess_extents(projection,analysisExtents,analysisExtents_layername=None,exclusionMask=None,exclusionMask_layername=None,split_threshold=None,verbose=True):
 
@@ -179,10 +201,12 @@ def __preprocess_extents(projection,analysisExtents,analysisExtents_layername=No
     # remove exclusion mask from analysisExtents and clip predicted and validation 
     if exclusionMask is not None:
         __vprint('  Removing exclusion mask',verbose)
+        exclusionMask = gpd.overlay(analysisExtents,exclusionMask,how='intersection')
         analysisExtents = gpd.overlay(analysisExtents,exclusionMask,how='difference')
         analysisExtents = analysisExtents.explode().reset_index(level=1,drop=True)
 
     return(analysisExtents)
+
 
 def __preprocess_validation(projection,validation,analysisExtents,test_case_level,split_threshold=None,simplify_tolerance=None,geometry_precision=2,verbose=True):
 
@@ -195,51 +219,49 @@ def __preprocess_validation(projection,validation,analysisExtents,test_case_leve
     # project
     __vprint('  Projecting',verbose)
     validation = validation.to_crs(projection)
-    
-    # round precisons
+     
+    # Convert to Pygeos
+    validation = __gdf_to_pg(validation)
+    analysisExtents = __gdf_to_pg(analysisExtents)
+   
+     # round precisons
     __vprint('  Rounding',verbose)
-    validation = __roundGeometry_gdf(validation,geometry_precision)
+    #validation = __roundGeometry_gdf(validation,geometry_precision)
+    validation = __roundGeometry_pg(validation,geometry_precision)
 
     # simplify
     __vprint('  Simplifying',verbose)
-    if simplify_tolerance is not None: validation = __simplify_gdf(validation,simplify_tolerance)
+    if simplify_tolerance is not None: validation = pg.simplify(validation,simplify_tolerance)
 
     # explode
-    __vprint('  Exploding',verbose)
-    validation = validation.explode().reset_index(level=1,drop=True)
+    #__vprint('  Exploding',verbose)
+    #validation = validation.explode().reset_index(level=1,drop=True)
     
     # fix geometries
-    __vprint('  Buffering',verbose)
-    validation = __fixGeometry_gdf(validation)
+    __vprint('  Making valid',verbose)
+    validation = pg.make_valid(validation)
 
     # split
     __vprint('  Splitting',verbose)
-    if split_threshold is not None: validation = __fishnet_gdf(validation,split_threshold,verbose)
+    if split_threshold is not None: validation = __fishnet_pg(validation,split_threshold,verbose)
     
     # remove non-polygons
-    validation = validation.loc[validation.geometry.geom_type == 'Polygon',:]
+    #validation = validation.loc[validation.geometry.geom_type == 'Polygon',:]
 
     # Remove empties 
-    __vprint('  Removing empties',verbose)
-    validation = validation.loc[~validation.is_empty]
-    validation = validation.reset_index(drop=True)
-    
-    # explode
-    __vprint('  Exploding',verbose)
-    validation = validation.explode().reset_index(level=1,drop=True)
-    
-    # Convert to Pygeos
-    validation = to_pygeos_polygons(validation)
-    analysisExtents = to_pygeos_polygons(analysisExtents)
+    #__vprint('  Removing empties',verbose)
+    #validation = validation.loc[~validation.is_empty]
+    #validation = validation.reset_index(drop=True)
 
     # round precisons
-    #__vprint('  Rounding',verbose)
+    __vprint('  Rounding',verbose)
     #validation = __roundGeometry_gdf(validation,geometry_precision)
-    
+    validation = __roundGeometry_pg(validation,geometry_precision)
+
     # fix geometries
-    __vprint('  Buffering',verbose)
+    __vprint('  Making valid geometry',verbose)
     #validation = __fixGeometry_gdf(validation)
-    validation = pg.buffer(validation,0)
+    validation = pg.make_valid(validation)
 
     # tree building
     valTree = pg.STRtree(validation)
@@ -257,6 +279,8 @@ def __preprocess_validation(projection,validation,analysisExtents,test_case_leve
     query = valTree.query_bulk(analysisExtents,predicate='intersects')
     validation = pg.intersection(analysisExtents[query[0,:]],validation[query[1,:]])
 
+    # convert to gdf
+    validation = __pg_to_gdf(validation,projection)
 
     return(validation)
 
@@ -264,8 +288,8 @@ def preprocess_test_case(validation,analysisExtents,crossSections,flows,crossSec
 
     __vprint('Preprocess test case ... {}'.format(test_case_name),verbose)
 
-    # cross sections
-    crossSections = __preprocess_cross_sections(cs,flows,crossSections_layerName=crossSections_layerName,verbose=verbose)
+    # forecasts
+    forecasts,crossSections = __preprocess_forecasts(cs,flows,crossSections_layerName=crossSections_layerName,verbose=verbose)
     
     # analysis extents
     analysisExtents = __preprocess_extents(projection,analysisExtents,exclusionMask=exclusionMask,split_threshold=split_threshold,verbose=verbose)
@@ -290,6 +314,7 @@ def preprocess_test_case(validation,analysisExtents,crossSections,flows,crossSec
 
     analysisExtents_filename = join(validation_directory,'analysisExtents.gpkg')
     crossSections_filename = join(validation_directory,'crossSections.gpkg')
+    forecast_filename_template = join(validation_directory,'forecast_{}.gpkg')
     validation_filename_template = join(validation_directory,'validation_{}.gpkg')
     diffVal_filename_template = join(validation_directory,'diffVal_{}.gpkg')
     
@@ -297,7 +322,11 @@ def preprocess_test_case(validation,analysisExtents,crossSections,flows,crossSec
     __vprint('Writing to files ...',verbose)
     analysisExtents.to_file(analysisExtents_filename,driver=__getVectorDriver(analysisExtents_filename)) 
     crossSections.to_file(crossSections_filename,driver=__getVectorDriver(crossSections_filename))
-    
+   
+    for f in forecasts:
+        forecast_filename = forecast_filename_template.format(l)
+        f.to_file(forecast_filename,driver=__getVectorDriver(forecast_filename)) 
+
     if isinstance(validation,list):
         for l,dv in zip(test_case_levels,diffVal):
             if dv is not None:
