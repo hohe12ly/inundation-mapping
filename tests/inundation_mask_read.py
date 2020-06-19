@@ -4,44 +4,55 @@ import numpy as np
 from numba import njit, typeof, typed, types
 import concurrent.features 
 import rasterio
+from rasterio.mask import mask
+from rasterio.io import DatasetReader
 import argparse
 import json
 
 
-def inundate(remFileName,catchmentsFileName,forecast_fileName,src_fileName,cross_walk_table_fileName,
-                inundation_raster_fileName=None,inundation_polygon_fileName=None,depths_fileName=None,stages_fileName=None,num_workers=4):
+def inundate(rem,catchments,forecast_fileName,src_fileName,cross_walk_table_fileName,HUCs,hucs_level=6,
+                inundation_raster_fileName=None,inundation_polygon_fileName=None,depths_fileName=None,num_workers=4):
 
     # make a catchment,stages numba dictionary
     catchmentStagesDict = __make_catchment_stages_dictionary(forecast_fileName,src_fileName,cross_walk_table_fileName)
     
-    rem = rasterio.open(remFileName)
-    catchments = rasterio.open(catchmentsFileName)
+    if isinstance(rem,str): 
+        rem = rasterio.open(rem)
+    elif isinstance(rem,DatasetReader):
+        continue
+    else:
+        raise TypeError "Pass rasterio dataset or filepath"
 
-    profile = rem.profile
-    #profile.update(blockxsize=256, blockysize=256, tiled=True)
+    if isinstance(catchments,str):
+        catchments = rasterio.open(catchments)
+    elif isinstance(catchments,DatasetReader):
+        continue
+    else:
+        raise TypeError "Pass rasterio dataset or filepath"
 
-    depths = rasterio.open(outfile, "w", **profile):
+    # save desired profiles
+    depths_profile = rem.profile
+    inundation_profile = rem.profile
 
-    # Materialize a list of destination block windows
-    # that we will use in several statements below.
-    windows = [window for ij, window in depths.block_windows()]
+    # update profiles
+    depths_profile.update(driver= 'GTiff', blockxsize=256, blockysize=256, tiled=True, compress=lzw, nodata=-9999, dtype=np.float32)
+    inundation_profile.update(driver= 'GTiff',blockxsize=256, blockysize=256, tiled=True, compress=lzw, nodata=0, dtype=np.uint8)
 
-    # This generator comprehension gives us raster data
-    # arrays for each window. Later we will zip a mapping
-    # of it with the windows list to get (window, result)
-    # pairs.
-    rem_gen = (rem.read(window=window) for window in windows)
-    catchments_gen = (catchments.read(window=window) for window in windows)
-    depths_gen = (depths.read(window=window) for window in windows)
+    # open outputs
+    depths = rasterio.open(depths_fileName, "w", **depths_profile)
+    inundation = rasterio.open(inundation_raster_fileName,"w",**inundaton_profile)
 
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=num_workers)
-    for window, result in zip(windows, executor.map(__compute_depths, rem_gen,catchments_gen,depths_gen)):
-        depths.write(result, window=window)
+    #for window, result in zip(windows, executor.map(__compute_depths, rem_gen,catchments_gen,depths_gen)):
+    #    depths.write(result, window=window)
 
-    executor.done()
+    rem_mask = mask(rem,aoi)
+    catchments_mask = mask(catchments,aoi)
+
+    #executor.done()
     rem.close()
     catchments.close()
     depths.close()
+    inundation.close()
 
 def __compute_depths(rem,catchments,catchmentStagesDict,depths):
     
