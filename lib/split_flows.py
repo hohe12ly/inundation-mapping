@@ -24,15 +24,14 @@ from collections import OrderedDict
 import buildstreamtraversal
 
 flows_fileName         = sys.argv[1] # $outputDataDir/demDerived_reaches.gpkg
-projection             = sys.argv[2]
-dem_fileName           = sys.argv[3] # $outputDataDir/dem_thalwegCond.tif
-split_flows_fileName   = sys.argv[4] # $outputDataDir/demDerived_reaches_split.gpkg 
-split_points_fileName  = sys.argv[5] # $outputDataDir/demDerived_reaches_split_points.gpkg
-maxLength              = float(sys.argv[6])
-manning                = float(sys.argv[7])
-slope_min              = float(sys.argv[8])
-huc8_filename          = sys.argv[9] # $outputDataDir/wbd8_projected.gpkg
-lakes_filename         = sys.argv[10] # $outputDataDir/nwm_lakes_proj_clp.gpkg
+dem_fileName           = sys.argv[2] # $outputDataDir/dem_thalwegCond.tif
+split_flows_fileName   = sys.argv[3] # $outputDataDir/demDerived_reaches_split.gpkg 
+split_points_fileName  = sys.argv[4] # $outputDataDir/demDerived_reaches_split_points.gpkg
+maxLength              = float(sys.argv[5])
+manning                = float(sys.argv[6])
+slope_min              = float(sys.argv[7])
+huc8_filename          = sys.argv[8] # $outputDataDir/wbd8_projected.gpkg
+lakes_filename         = sys.argv[9] # $outputDataDir/nwm_lakes_proj_clp.gpkg
 
 toMetersConversion = 1e-3
 
@@ -48,6 +47,9 @@ else:
 WBD8 = WBD8.filter(items=['fossid', 'geometry'])
 WBD8 = WBD8.set_index('fossid')
 flows = flows.explode()
+
+# temp
+flows = flows.to_crs(WBD8.crs)
 
 split_flows = []
 slopes = []
