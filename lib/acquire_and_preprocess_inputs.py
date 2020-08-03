@@ -77,7 +77,7 @@ def pull_and_prepare_wbd(path_to_saved_data_parent_dir, overwrite_wbd,num_worker
             wbd_layer = 'WBDHU' + wbd_layer_num
             print("\t{}".format(wbd_layer))
             wbd = gp.read_file(wbd_gdb_path,layer=wbd_layer)
-            wbd.to_crs(PREP_PROJECTION)
+            wbd = wbd.to_crs(PREP_PROJECTION)
             wbd = wbd.rename(columns={'huc'+wbd_layer_num : 'HUC' + wbd_layer_num})
             wbd.to_file(multilayer_wbd_geopackage,driver="GPKG",layer=wbd_layer)
             #output_gpkg = os.path.join(wbd_directory, wbd_layer + '.gpkg')
