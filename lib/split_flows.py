@@ -5,7 +5,7 @@ Script objectives:
     1) split stream segments based on lake boundaries (defined with ID to avoid in croswalk)
     2) split stream segments based on threshold distance
     3) calculate channel slope, manning's n, and LengthKm, and Waterbody value
-    4) create unique ids (ideally globally) 
+    4) create unique ids (ideally globally)
     5) create vector points encoded with HydroID's
 '''
 
@@ -28,10 +28,9 @@ dem_fileName           = sys.argv[2] # $outputDataDir/dem_thalwegCond.tif
 split_flows_fileName   = sys.argv[3] # $outputDataDir/demDerived_reaches_split.gpkg 
 split_points_fileName  = sys.argv[4] # $outputDataDir/demDerived_reaches_split_points.gpkg
 maxLength              = float(sys.argv[5])
-manning                = float(sys.argv[6])
-slope_min              = float(sys.argv[7])
-huc8_filename          = sys.argv[8] # $outputDataDir/wbd8_projected.gpkg
-lakes_filename         = sys.argv[9] # $outputDataDir/nwm_lakes_proj_clp.gpkg
+slope_min              = float(sys.argv[6])
+huc8_filename          = sys.argv[7] # $outputDataDir/wbd8_projected.gpkg
+lakes_filename         = sys.argv[8] # $outputDataDir/nwm_lakes_proj_clp.gpkg
 
 toMetersConversion = 1e-3
 
@@ -57,7 +56,7 @@ HYDROID = 'HydroID'
 split_endpoints = OrderedDict()
 # check for lake features
 if lakes is not None:
-    if len(lakes) > 0: 
+    if len(lakes) > 0:
       print ('splitting stream segments at ' + str(len(lakes)) + ' waterbodies')
       #create splits at lake boundaries
       lakes = lakes.filter(items=['newID', 'geometry'])
@@ -69,15 +68,14 @@ print ('splitting ' + str(len(flows)) + ' stream segments based on ' + str(maxLe
 # remove empty geometries
 flows = flows.loc[~flows.is_empty,:]
 
-for i,lineString in tqdm(enumerate(flows.geometry),total=len(flows.geometry)):      
-#for i,lineString in enumerate(flows.geometry):      
+for i,lineString in tqdm(enumerate(flows.geometry),total=len(flows.geometry)):
   # Reverse geometry order (necessary for BurnLines)
   lineString = LineString(lineString.coords[::-1])
   # Collect small reaches
   if lineString.length < maxLength:
       split_flows = split_flows + [lineString]
       line_points = [point for point in zip(*lineString.coords.xy)]
-      
+
       # Calculate channel slope
       start_point = line_points[0]; end_point = line_points[-1]
       start_elev = dem.sampleFromCoordinates(*start_point,returns='value')
@@ -113,7 +111,7 @@ for i,lineString in tqdm(enumerate(flows.geometry),total=len(flows.geometry)):
 
           splitLineString = LineString(cumulative_line)
           split_flows = split_flows + [splitLineString]
-          
+
           # Calculate channel slope
           start_point = cumulative_line[0]; end_point = cumulative_line[-1]
           start_elev = dem.sampleFromCoordinates(*start_point,returns='value')
@@ -140,8 +138,7 @@ for i,lineString in tqdm(enumerate(flows.geometry),total=len(flows.geometry)):
       slope = slope_min
   slopes = slopes + [slope]
 
-split_flows_gdf = gpd.GeoDataFrame({'ManningN' : [manning] * len(split_flows) ,
-                                    'S0' : slopes ,'geometry':split_flows}, crs=flows.crs, geometry='geometry')
+split_flows_gdf = gpd.GeoDataFrame({'S0' : slopes ,'geometry':split_flows}, crs=flows.crs, geometry='geometry')
 split_flows_gdf['LengthKm'] = split_flows_gdf.geometry.length * toMetersConversion
 if lakes is not None:
     split_flows_gdf = gpd.sjoin(split_flows_gdf, lakes, how='left', op='within')
@@ -153,8 +150,6 @@ tResults=None
 tResults = addattributes.execute(split_flows_gdf, WBD8, HYDROID)
 if tResults[0] == 'OK':
     split_flows_gdf = tResults[1]
-    if split_flows_gdf.crs.to_string() != flows.crs.to_string():                        
-      split_flows_gdf = split_flows_gdf.to_crs(flows.crs.to_string())
 else:
     print ('Error: Could not add network attributes to stream segments')
 
@@ -168,12 +163,12 @@ else:
 
 # Get all vertices
 split_points = OrderedDict()
-for row in split_flows_gdf[['geometry',HYDROID, 'NextDownID']].iterrows():     
+for row in split_flows_gdf[['geometry',HYDROID, 'NextDownID']].iterrows():
     lineString = row[1][0]
 
     for point in zip(*lineString.coords.xy):
         if point in split_points:
-            if row[1][2] == split_points[point]:                               
+            if row[1][2] == split_points[point]:
                 pass
             else:
                 split_points[point] = row[1][1]
@@ -234,4 +229,7 @@ split_points_gdf.to_file(split_points_fileName,driver='GPKG',index=False)
 #
 #
 #     return(intersectionPoints,intersectionPoints_geometries)
+<<<<<<< HEAD
 
+=======
+>>>>>>> foss-fim-development
