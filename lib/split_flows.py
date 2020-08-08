@@ -229,7 +229,3 @@ split_points_gdf.to_file(split_points_fileName,driver='GPKG',index=False)
 #
 #
 #     return(intersectionPoints,intersectionPoints_geometries)
-<<<<<<< HEAD
-
-=======
->>>>>>> foss-fim-development
