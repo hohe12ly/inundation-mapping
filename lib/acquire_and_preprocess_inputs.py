@@ -283,7 +283,7 @@ def manage_preprocessing(hucs_of_interest, num_workers=1,overwrite_nhd=False, ov
     vector_data_dir = os.path.join(path_to_saved_data_parent_dir, NHDPLUS_VECTORS_DIRNAME)
     if not os.path.exists(vector_data_dir):
         os.mkdir(vector_data_dir)
-        
+    
     # Parse HUCs from hucs_of_interest.
     if isinstance(hucs_of_interest,list):
         if len(hucs_of_interest) == 1:
@@ -291,6 +291,8 @@ def manage_preprocessing(hucs_of_interest, num_workers=1,overwrite_nhd=False, ov
                 with open(hucs_of_interest[0]) as csv_file:  # Does not have to be CSV format.
                     huc_list = [i[0] for i in csv.reader(csv_file)]
             except FileNotFoundError:
+                huc_list = hucs_of_interest
+        else:
                 huc_list = hucs_of_interest
     elif isinstance(hucs_of_interest,str):
         try:
