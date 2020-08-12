@@ -14,6 +14,7 @@ import geopandas as gpd
 import pandas as pd
 from shapely.geometry import Point, LineString, MultiPoint
 from raster import Raster
+import rasterio
 import numpy as np
 import argparse
 from tqdm import tqdm
@@ -37,7 +38,8 @@ toMetersConversion = 1e-3
 print('Loading data ...')
 flows = gpd.read_file(flows_fileName)
 WBD8 = gpd.read_file(huc8_filename)
-dem = Raster(dem_fileName)
+#dem = Raster(dem_fileName)
+dem = rasterio.open(dem_fileName,'r')
 if isfile(lakes_filename):
     lakes = gpd.read_file(lakes_filename)
 else:
@@ -78,8 +80,9 @@ for i,lineString in tqdm(enumerate(flows.geometry),total=len(flows.geometry)):
 
       # Calculate channel slope
       start_point = line_points[0]; end_point = line_points[-1]
-      start_elev = dem.sampleFromCoordinates(*start_point,returns='value')
-      end_elev = dem.sampleFromCoordinates(*end_point,returns='value')
+      #start_elev = dem.sampleFromCoordinates(*start_point,returns='value')
+      #end_elev = dem.sampleFromCoordinates(*end_point,returns='value')
+      start_elev,end_elev = [i[0] for i in rasterio.sample.sample_gen(dem,[start_point,end_point])]
       slope = float(abs(start_elev - end_elev) / lineString.length)
       if slope < slope_min:
           slope = slope_min
@@ -114,8 +117,9 @@ for i,lineString in tqdm(enumerate(flows.geometry),total=len(flows.geometry)):
 
           # Calculate channel slope
           start_point = cumulative_line[0]; end_point = cumulative_line[-1]
-          start_elev = dem.sampleFromCoordinates(*start_point,returns='value')
-          end_elev = dem.sampleFromCoordinates(*end_point,returns='value')
+          #start_elev = dem.sampleFromCoordinates(*start_point,returns='value')
+          #end_elev = dem.sampleFromCoordinates(*end_point,returns='value')
+          start_elev,end_elev = [i[0] for i in rasterio.sample.sample_gen(dem,[start_point,end_point])]
           slope = float(abs(start_elev - end_elev) / splitLineString.length)
           if slope < slope_min:
               slope = slope_min
@@ -131,8 +135,9 @@ for i,lineString in tqdm(enumerate(flows.geometry),total=len(flows.geometry)):
 
   # Calculate channel slope
   start_point = cumulative_line[0]; end_point = cumulative_line[-1]
-  start_elev = dem.sampleFromCoordinates(*start_point,returns='value')
-  end_elev = dem.sampleFromCoordinates(*end_point,returns='value')
+  #start_elev = dem.sampleFromCoordinates(*start_point,returns='value')
+  #end_elev = dem.sampleFromCoordinates(*end_point,returns='value')
+  start_elev,end_elev = [i[0] for i in rasterio.sample.sample_gen(dem,[start_point,end_point])]
   slope = float(abs(start_elev - end_elev) / splitLineString.length)
   if slope < slope_min:
       slope = slope_min
