@@ -115,7 +115,7 @@ echo -e $startDiv"D8 Flow Directions on Burned DEM $hucNumber"$stopDiv
 date -u
 Tstart
 [ ! -f $outputHucDataDir/flowdir_d8_burned_filled.tif ] && [ ! -f $outputHucDataDir/slopes_d8_burned_filled.tif ] && \
-mpiexec -n $ncores_fd $taudemDir2/d8flowdir -fel $outputHucDataDir/dem_burned_filled.tif -p $outputHucDataDir/flowdir_d8_burned_filled.tif -sd8 $outputHucDataDir/slopes_d8_burned_filled.tif
+mpiexec -n $ncores_fd $taudemDir2/d8flowdir -fel $outputHucDataDir/dem_burned_filled.tif -p $outputHucDataDir/flowdir_d8_burned_filled.tif -sd8 $outputHucDataDir/slopes_d8_burned_filled_temp.tif
 Tcount
 
 ## MASK BURNED DEM FOR STREAMS ONLY ###
@@ -132,6 +132,14 @@ date -u
 Tstart
 [ ! -f $outputHucDataDir/dem_thalwegCond.tif ] && \
 $taudemDir/flowdircond -p $outputHucDataDir/flowdir_d8_burned_filled_flows.tif -z $outputHucDataDir/dem_meters.tif -zfdc $outputHucDataDir/dem_thalwegCond.tif
+Tcount
+
+## D8 SLOPES ##
+echo -e $startDiv"D8 Slopes from DEM $hucNumber"$stopDiv
+date -u
+Tstart
+#[ ! -f $outputHucDataDir/flowdir_d8_burned_filled.tif ] && [ ! -f $outputHucDataDir/slopes_d8_burned_filled.tif ] && \
+mpiexec -n $ncores_fd $taudemDir2/d8flowdir -fel $outputHucDataDir/dem_thalwegCond.tif -p $outputHucDataDir/flowdir_d8_burned_filled_temp.tif -sd8 $outputHucDataDir/slopes_d8_burned_filled.tif
 Tcount
 
 ## DINF FLOW DIR ##
