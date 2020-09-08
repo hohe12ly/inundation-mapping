@@ -73,22 +73,22 @@ def pull_and_prepare_wbd(path_to_saved_data_parent_dir,nwm_dir_name,nwm_file_to_
         if os.path.isfile(multilayer_wbd_geopackage):
             os.remove(multilayer_wbd_geopackage)
         print("Making National WBD GPKG...")
-        print("\tWBDHU8")
-        wbd_hu8 = gp.read_file(wbd_gdb_path, layer='WBDHU8')
-        wbd_hu8 = wbd_hu8.rename(columns={'huc8':'HUC8'}) # rename column to caps
+        print("\tWBDHU12")
+        wbd_hu8 = gp.read_file(wbd_gdb_path, layer='WBDHU12')
+        wbd_hu8 = wbd_hu8.rename(columns={'huc12':'HUC12'}) # rename column to caps
         wbd_hu8 = wbd_hu8.sort_values('HUC8')
         fossids = [str(item).zfill(4) for item in list(range(1, 1 + len(wbd_hu8)))]
         wbd_hu8[FOSS_ID] = fossids
         wbd_hu8 = wbd_hu8.to_crs(PREP_PROJECTION)  # Project.
         #wbd_hu8.to_file(os.path.join(wbd_directory, 'WBDHU8.gpkg'), driver='GPKG')  # Save.
         wbd_hu8 = subset_wbd_to_nwm_domain(wbd_hu8,nwm_file_to_use)
-        wbd_hu8.to_file(multilayer_wbd_geopackage, driver='GPKG',layer='WBDHU8')  # Save.
-        wbd_hu8.HUC8.to_csv(nwm_huc_list_file_template.format('8'),index=False,header=False)
+        wbd_hu8.to_file(multilayer_wbd_geopackage, driver='GPKG',layer='WBDHU12')  # Save.
+        wbd_hu8.HUC8.to_csv(nwm_huc_list_file_template.format('12'),index=False,header=False)
         #wbd_gpkg_list.append(os.path.join(wbd_directory, 'WBDHU8.gpkg'))  # Append to wbd_gpkg_list for subsetting later.
         del wbd_hu8
 
         # Prepare procs_list for multiprocessed geopackaging.
-        for wbd_layer_num in ['4', '6']:
+        for wbd_layer_num in ['4', '6','8','10']:
             wbd_layer = 'WBDHU' + wbd_layer_num
             print("\t{}".format(wbd_layer))
             wbd = gp.read_file(wbd_gdb_path,layer=wbd_layer)

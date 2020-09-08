@@ -35,7 +35,8 @@ def subset_vector_layers(hucCode,nwm_streams_fileName,nhd_streams_fileName,nhd_s
     # query nhd+HR streams for HUC code
     print("Querying NHD Streams for HUC{} {}".format(hucUnitLength,hucCode),flush=True)
     nhd_streams = gpd.read_file(nhd_streams_fileName, mask = wbd)
-    nhd_streams = nhd_streams.query('ReachCode.str.startswith("{}")'.format(hucCode))
+    #nhd_streams = nhd_streams.query('ReachCode.str.startswith("{}")'.format(hucCode))
+    #nhd_streams = gpd.overlay(nhd_streams,wbd,how='intersection')
     nhd_streams = nhd_streams.explode()
 
     # find intersecting nwm_headwaters

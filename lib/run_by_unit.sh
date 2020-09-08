@@ -14,7 +14,7 @@ huc4Identifier=${hucNumber:0:4}
 input_NHD_Flowlines=$inputDataDir/nhdplus_vectors/"$huc4Identifier"/NHDPlusBurnLineEvent"$huc4Identifier".gpkg
 input_NHD_VAA=$inputDataDir/nhdplus_vectors/"$huc4Identifier"/NHDPlusFlowLineVAA"$huc4Identifier".gpkg
 input_NHD_WBHD_layer=WBDHU$hucUnitLength
-input_DEM=$inputDataDir/nhdplus_rasters/HRNHDPlusRasters"$huc4Identifier"/elev_cm.tif
+input_DEM=/data/temp/lidar/central_b1.vrt
 
 ## GET WBD ##
 echo -e $startDiv"Get WBD $hucNumber"$stopDiv
@@ -52,14 +52,14 @@ echo -e $startDiv"Clip DEM $hucNumber"$stopDiv
 date -u
 Tstart
 [ ! -f $outputHucDataDir/dem.tif ] && \
-gdalwarp -cutline $outputHucDataDir/wbd_buffered.gpkg -crop_to_cutline -ot Int32 -r bilinear -of "GTiff" -overwrite -co "BLOCKXSIZE=512" -co "BLOCKYSIZE=512" -co "TILED=YES" -co "COMPRESS=LZW" -co "BIGTIFF=YES" $input_DEM $outputHucDataDir/dem.tif
+gdalwarp -cutline $outputHucDataDir/wbd_buffered.gpkg -crop_to_cutline -ot Int32 -r bilinear -of "GTiff" -overwrite -co "BLOCKXSIZE=512" -co "BLOCKYSIZE=512" -co "TILED=YES" -co "COMPRESS=LZW" -co "BIGTIFF=YES" $input_DEM $outputHucDataDir/dem_meters.tif
 Tcount
 
 ## GET RASTER METADATA
 echo -e $startDiv"Get DEM Metadata $hucNumber"$stopDiv
 date -u
 Tstart
-read fsize ncols nrows ndv xmin ymin xmax ymax cellsize_resx cellsize_resy<<<$($libDir/getRasterInfoNative.py $outputHucDataDir/dem.tif)
+read fsize ncols nrows ndv xmin ymin xmax ymax cellsize_resx cellsize_resy<<<$($libDir/getRasterInfoNative.py $outputHucDataDir/dem_meters.tif)
 Tcount
 
 ## CONVERT TO METERS ##
