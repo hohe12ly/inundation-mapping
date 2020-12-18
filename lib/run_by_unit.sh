@@ -30,7 +30,7 @@ huc2Identifier=${hucNumber:0:2}
 input_NHD_WBHD_layer=WBDHU$hucUnitLength
 input_DEM=$inputDataDir/nhdplus_rasters/HRNHDPlusRasters"$huc4Identifier"/elev_cm.tif
 input_NLD=$inputDataDir/nld_vectors/huc2_levee_lines/nld_preprocessed_"$huc2Identifier".gpkg
-# Define the landsea water body mask using either Great Lakes or Ocean polygon input #
+# Define the landsea water body mask using either Great Lakes or Ocean polygon input ###
 if [[ $huc2Identifier == "04" ]] ; then
   input_LANDSEA=$inputDataDir/landsea/gl_water_polygons.gpkg
   echo -e "Using $input_LANDSEA for water body mask (Great Lakes)"
