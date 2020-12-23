@@ -267,6 +267,7 @@ if [ "$extent" = "MS" ]; then
   date -u
   Tstart
   $libDir/fr_to_ms_reaches.py $outputHucDataDir/demDerived_reaches_split.gpkg $outputHucDataDir/demDerived_reaches.shp $outputHucDataDir/demDerived_reaches_split.gpkg
+  echo $libDir/fr_to_ms_reaches.py $outputHucDataDir/demDerived_reaches_split.gpkg $outputHucDataDir/demDerived_reaches.shp $outputHucDataDir/demDerived_reaches_split.gpkg
   Tcount
 fi
 
