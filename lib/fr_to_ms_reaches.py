@@ -18,6 +18,7 @@ print('Loading data ...')
 fr_split_flows = gpd.read_file(fr_split_flows_fileName)
 ms_flows = gpd.read_file(ms_flows_fileName)
 
+ms_flows_buffer = ms_flows.copy()
 ms_flows_buffer['geometry'] = ms_flows.buffer(10) # 10 meter buffer around lines
 ms_split_flows_gdf = gpd.sjoin(fr_split_flows, ms_flows_buffer, how='left', op='within')
 
