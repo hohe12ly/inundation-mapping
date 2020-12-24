@@ -30,7 +30,7 @@ huc2Identifier=${hucNumber:0:2}
 input_NHD_WBHD_layer=WBDHU$hucUnitLength
 input_DEM=$inputDataDir/nhdplus_rasters/HRNHDPlusRasters"$huc4Identifier"/elev_cm.tif
 input_NLD=$inputDataDir/nld_vectors/huc2_levee_lines/nld_preprocessed_"$huc2Identifier".gpkg
-input_fr_reaches=$outputDataDir/ryan_test/"$hucNumber"/demDerived_reaches.shp
+input_fr_reaches_dir=$outputDataDir/ryan_test/"$hucNumber"
 # Define the landsea water body mask using either Great Lakes or Ocean polygon input ###
 if [[ $huc2Identifier == "04" ]] ; then
   input_LANDSEA=$inputDataDir/landsea/gl_water_polygons.gpkg
@@ -239,19 +239,22 @@ $taudemDir/streamnet -p $outputHucDataDir/flowdir_d8_burned_filled.tif -fel $out
 Tcount
 
 ## USE FR DEM REACHES FOR MS DOMAIN ##
+fr_to_ms_reaches=$input_fr_reaches_dir/demDerived_reaches.shp
 if [ "$extent" = "MS" ]; then
   ## USE FR OUTPUT DEMDERIVED_REACHES FOR INPUT TO MS SPLITS ##
   echo -e $startDiv"Using FR demDerived_reaches for input to MS splits"$stopDiv
-  if [[ ! -f $input_fr_reaches ]] ; then
-    echo "!!FR file does not exist: $input_fr_split_reaches --> run FR $hucNumber first. Aborting run_by_unit.sh"
+  if [[ ! -f $fr_to_ms_reaches ]] ; then
+    echo "!!FR file does not exist: $fr_to_ms_reaches --> run FR $hucNumber first. Aborting run_by_unit.sh"
     exit N
   fi
   echo -e "Input FR reaches overlapping MS within $hucNumber"$stopDiv
   date -u
   Tstart
-  $libDir/fr_to_ms_reaches.py $input_fr_reaches $outputHucDataDir/demDerived_reaches.shp $outputHucDataDir/demDerived_reaches_fr_to_ms.shp
-  echo $libDir/fr_to_ms_reaches.py $input_fr_reaches $outputHucDataDir/demDerived_reaches.shp $outputHucDataDir/demDerived_reaches_fr_to_ms.shp
+  $libDir/fr_to_ms_reaches.py $fr_to_ms_reaches $outputHucDataDir/demDerived_reaches.shp $outputHucDataDir/demDerived_reaches_fr_to_ms.shp
   Tcount
+elif [ "$extent" = "FR" ]; then
+  [ ! -f $input_fr_reaches_dir ] && mkdir $input_fr_reaches_dir
+  cp $outputHucDataDir/demDerived_reaches.shp $input_fr_reaches_dir
 fi
 
 ## SPLIT DERIVED REACHES ##
@@ -273,8 +276,8 @@ if [[ ! -f $outputHucDataDir/demDerived_reaches_split.gpkg ]] ; then
   exit 0
 fi
 
+## MASK RASTERS BY MS BUFFER ##
 if [ "$extent" = "MS" ]; then
-  ## MASK RASTERS BY MS BUFFER ##
   echo -e $startDiv"Mask Rasters with Stream Buffer $hucNumber"$stopDiv
   date -u
   Tstart
