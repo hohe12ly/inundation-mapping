@@ -93,12 +93,13 @@ Tstart
 read fsize ncols nrows ndv xmin ymin xmax ymax cellsize_resx cellsize_resy<<<$($libDir/getRasterInfoNative.py $outputHucDataDir/dem.tif)
 
 ## RASTERIZE NLD MULTILINES ##
-echo -e $startDiv"Rasterize all NLD multilines using zelev vertices"$stopDiv
-date -u
-Tstart
-[ ! -f $outputHucDataDir/nld_rasterized_elev.tif ] && [ -f $outputHucDataDir/nld_subset_levees.gpkg ] && \
-gdal_rasterize -l nld_subset_levees -3d -at -init $ndv -te $xmin $ymin $xmax $ymax -ts $ncols $nrows -ot Float32 -of GTiff -co "COMPRESS=LZW" -co "BIGTIFF=YES" -co "TILED=YES" $outputHucDataDir/nld_subset_levees.gpkg $outputHucDataDir/nld_rasterized_elev.tif
-Tcount
+if [[ ! -f $outputHucDataDir/nld_rasterized_elev.tif && -f $outputHucDataDir/nld_subset_levees.gpkg ]]; then
+  echo -e $startDiv"Rasterize all NLD multilines using zelev vertices"$stopDiv
+  date -u
+  Tstart
+  gdal_rasterize -l nld_subset_levees -3d -at -init $ndv -te $xmin $ymin $xmax $ymax -ts $ncols $nrows -ot Float32 -of GTiff -co "COMPRESS=LZW" -co "BIGTIFF=YES" -co "TILED=YES" $outputHucDataDir/nld_subset_levees.gpkg $outputHucDataDir/nld_rasterized_elev.tif
+  Tcount
+fi
 
 ## CONVERT TO METERS ##
 echo -e $startDiv"Convert DEM to Meters $hucNumber"$stopDiv
@@ -135,12 +136,13 @@ if [ "$extent" = "FR" ]; then
 fi
 
 ## BURN LEVEES INTO DEM ##
-echo -e $startDiv"Burn nld levees into dem & convert nld elev to meters (*Overwrite dem_meters.tif output) $hucNumber"$stopDiv
-date -u
-Tstart
-[ -f $outputHucDataDir/nld_rasterized_elev.tif ] && \
-gdal_calc.py --quiet --type=Float32 --overwrite --NoDataValue $ndv --co "BLOCKXSIZE=512" --co "BLOCKYSIZE=512" --co "TILED=YES" --co "COMPRESS=LZW" --co "BIGTIFF=YES" -A $outputHucDataDir/dem_meters.tif -B $outputHucDataDir/nld_rasterized_elev.tif --outfile="$outputHucDataDir/dem_meters.tif" --calc="maximum(A,(B*0.3048))" --NoDataValue=$ndv
-Tcount
+if [ -f $outputHucDataDir/nld_rasterized_elev.tif ]; then
+  echo -e $startDiv"Burn nld levees into dem & convert nld elev to meters \n(*Overwrite dem_meters.tif output) $hucNumber"$stopDiv
+  date -u
+  Tstart
+  gdal_calc.py --quiet --type=Float32 --overwrite --NoDataValue $ndv --co "BLOCKXSIZE=512" --co "BLOCKYSIZE=512" --co "TILED=YES" --co "COMPRESS=LZW" --co "BIGTIFF=YES" -A $outputHucDataDir/dem_meters.tif -B $outputHucDataDir/nld_rasterized_elev.tif --outfile="$outputHucDataDir/dem_meters.tif" --calc="maximum(A,(B*0.3048))" --NoDataValue=$ndv
+  Tcount
+fi
 
 ## DEM Reconditioning ##
 # Using AGREE methodology, hydroenforce the DEM so that it is consistent
