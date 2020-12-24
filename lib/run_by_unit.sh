@@ -255,6 +255,7 @@ if [ "$extent" = "MS" ]; then
 elif [ "$extent" = "FR" ]; then
   [ ! -d $input_fr_reaches_dir ] && mkdir $input_fr_reaches_dir
   cp $outputHucDataDir/demDerived_reaches.shp $input_fr_reaches_dir
+  for file in $outputHucDataDir/demDerived_reaches.*; do cp "$file" "$input_fr_reaches_dir";done
 fi
 
 ## SPLIT DERIVED REACHES ##
