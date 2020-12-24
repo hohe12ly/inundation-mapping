@@ -30,7 +30,7 @@ huc2Identifier=${hucNumber:0:2}
 input_NHD_WBHD_layer=WBDHU$hucUnitLength
 input_DEM=$inputDataDir/nhdplus_rasters/HRNHDPlusRasters"$huc4Identifier"/elev_cm.tif
 input_NLD=$inputDataDir/nld_vectors/huc2_levee_lines/nld_preprocessed_"$huc2Identifier".gpkg
-input_fr_split_reaches=$outputDataDir/ryan_test/"$hucNumber"/demDerived_reaches.shp
+input_fr_reaches=$outputDataDir/ryan_test/"$hucNumber"/demDerived_reaches.shp
 # Define the landsea water body mask using either Great Lakes or Ocean polygon input ###
 if [[ $huc2Identifier == "04" ]] ; then
   input_LANDSEA=$inputDataDir/landsea/gl_water_polygons.gpkg
@@ -236,16 +236,26 @@ Tstart
 $taudemDir/streamnet -p $outputHucDataDir/flowdir_d8_burned_filled.tif -fel $outputHucDataDir/dem_thalwegCond.tif -ad8 $outputHucDataDir/flowaccum_d8_burned_filled.tif -src $outputHucDataDir/demDerived_streamPixels.tif -ord $outputHucDataDir/streamOrder.tif -tree $outputHucDataDir/treeFile.txt -coord $outputHucDataDir/coordFile.txt -w $outputHucDataDir/sn_catchments_reaches.tif -net $outputHucDataDir/demDerived_reaches.shp
 Tcount
 
-## SPLIT DERIVED REACHES ##
-echo -e $startDiv"Split Derived Reaches $hucNumber"$stopDiv
+## USE FR DEM REACHES FOR MS DOMAIN ##
 if [ "$extent" = "MS" ]; then
-  ## USE FR OUTPUT DEMDERIVED_REACHES FOR MS SPLITS ##
-  echo -e "Using fr demDerived_reaches for ms splits"$stopDiv
-  input_split_reaches=$input_fr_split_reaches
-  if [[ ! -f $input_split_reaches ]] ; then
+  ## USE FR OUTPUT DEMDERIVED_REACHES FOR INPUT TO MS SPLITS ##
+  echo -e $startDiv"Using FR demDerived_reaches for input to MS splits"$stopDiv
+  if [[ ! -f $input_fr_reaches ]] ; then
     echo "!!FR file does not exist: $input_fr_split_reaches --> run FR $hucNumber first. Aborting run_by_unit.sh"
     exit N
   fi
+  echo -e "Input FR reaches overlapping MS within $hucNumber"$stopDiv
+  date -u
+  Tstart
+  $libDir/fr_to_ms_reaches.py $input_fr_reaches $outputHucDataDir/demDerived_reaches.shp $outputHucDataDir/demDerived_reaches_fr_to_ms.shp
+  echo $libDir/fr_to_ms_reaches.py $input_fr_reaches $outputHucDataDir/demDerived_reaches.shp $outputHucDataDir/demDerived_reaches_fr_to_ms.shp
+  Tcount
+fi
+
+## SPLIT DERIVED REACHES ##
+echo -e $startDiv"Split Derived Reaches $hucNumber"$stopDiv
+if [ "$extent" = "MS" ]; then
+  input_split_reaches=$outputHucDataDir/demDerived_reaches_fr_to_ms.shp
 else
   input_split_reaches=$outputHucDataDir/demDerived_reaches.shp
 fi
@@ -259,16 +269,6 @@ if [[ ! -f $outputHucDataDir/demDerived_reaches_split.gpkg ]] ; then
   echo "No AHPs point(s) within HUC $hucNumber boundaries. Aborting run_by_unit.sh"
   rm -rf $outputHucDataDir
   exit 0
-fi
-
-if [ "$extent" = "MS" ]; then
-  ## CONVERT FR SPLIT FLOWS TO MS ##
-  echo -e $startDiv"Export FR reaches overlapping MS within $hucNumber"$stopDiv
-  date -u
-  Tstart
-  $libDir/fr_to_ms_reaches.py $outputHucDataDir/demDerived_reaches_split.gpkg $outputHucDataDir/demDerived_reaches.shp $outputHucDataDir/demDerived_reaches_split.gpkg
-  echo $libDir/fr_to_ms_reaches.py $outputHucDataDir/demDerived_reaches_split.gpkg $outputHucDataDir/demDerived_reaches.shp $outputHucDataDir/demDerived_reaches_split.gpkg
-  Tcount
 fi
 
 if [ "$extent" = "MS" ]; then
