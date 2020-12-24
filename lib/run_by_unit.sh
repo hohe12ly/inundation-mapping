@@ -253,7 +253,7 @@ if [ "$extent" = "MS" ]; then
   $libDir/fr_to_ms_reaches.py $fr_to_ms_reaches $outputHucDataDir/demDerived_reaches.shp $outputHucDataDir/demDerived_reaches_fr_to_ms.shp
   Tcount
 elif [ "$extent" = "FR" ]; then
-  [ ! -f $input_fr_reaches_dir ] && mkdir $input_fr_reaches_dir
+  [ ! -d $input_fr_reaches_dir ] && mkdir $input_fr_reaches_dir
   cp $outputHucDataDir/demDerived_reaches.shp $input_fr_reaches_dir
 fi
 
