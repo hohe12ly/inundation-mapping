@@ -250,7 +250,7 @@ if [ "$extent" = "MS" ]; then
   echo -e "Input FR reaches overlapping MS within $hucNumber"$stopDiv
   date -u
   Tstart
-  $libDir/fr_to_ms_reaches.py $fr_to_ms_reaches $outputHucDataDir/demDerived_reaches.shp $outputHucDataDir/demDerived_reaches_fr_to_ms.shp
+  $libDir/fr_to_ms_reaches.py $fr_to_ms_reaches $outputHucDataDir/demDerived_reaches.shp $outputHucDataDir/wbd.gpkg $outputHucDataDir/demDerived_reaches_fr_to_ms.shp
   Tcount
 elif [ "$extent" = "FR" ]; then
   [ ! -d $input_fr_reaches_dir ] && mkdir $input_fr_reaches_dir
