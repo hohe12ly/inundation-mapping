@@ -27,6 +27,6 @@ ms_flows_buffer['union'] = 'union' # add dummy column to dissolve all geometries
 ms_flows_buffer_search = ms_flows_buffer.dissolve(by='union').geometry[0]  # take the single union geometry
 #ms_split_flows_subset = gpd.sjoin(fr_split_flows, ms_flows_buffer, how='left', op='within')
 
-ms_dem_flows_subset = fr_dem_flows[fr_dem_flows.within(ms_flows_buffer_search) | (fr_dem_flows.crosses(wbd_huc_boundary) & fr_dem_flows.touches(ms_flows_buffer_search))]
+ms_dem_flows_subset = fr_dem_flows[fr_dem_flows.within(ms_flows_buffer_search) | (fr_dem_flows.crosses(wbd_huc_boundary))]# & fr_dem_flows.touches(ms_flows_buffer_search))]
 
 ms_dem_flows_subset.to_file(ms_dem_flows_fineName,driver='GPKG',index=False)
