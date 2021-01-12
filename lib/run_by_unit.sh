@@ -19,7 +19,7 @@ echo -e "defaultMaxJobs=$defaultMaxJobs"
 echo -e "memfree=$memfree"$stopDiv
 
 ## SET OUTPUT DIRECTORY FOR UNIT ##
-# Define and create output directory for each HUC
+# Define and create output directory for each Hydrologic Unit Code (HUC)
 hucNumber="$1"
 outputHucDataDir=$outputRunDataDir/$hucNumber
 mkdir $outputHucDataDir
@@ -54,7 +54,7 @@ Tcount
 
 
 ## BUFFER WBD ##
-# Buffer WBD by 5000m
+# Buffer WBD by 5000m to ensure all data cover the input HUC(s)
 echo -e $startDiv"Buffer WBD $hucNumber"$stopDiv
 date -u
 Tstart
@@ -183,7 +183,7 @@ Tcount
 
 
 ## PIT REMOVE BURNED DEM ##
-# Using RichDEM Depression Filling technique.
+# Remove sinks using RichDEM Depression Filling technique.
 echo -e $startDiv"Pit remove Burned DEM $hucNumber"$stopDiv
 date -u
 Tstart
