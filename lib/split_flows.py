@@ -33,6 +33,7 @@ slope_min              = float(sys.argv[6])
 wbd8_clp_filename      = sys.argv[7]
 lakes_filename         = sys.argv[8]
 lakes_buffer_input     = float(sys.argv[9])
+mask_feature_filename  = sys.argv[10]
 
 wbd = gpd.read_file(wbd8_clp_filename)
 
@@ -53,6 +54,12 @@ if isfile(lakes_filename):
 else:
     lakes = None
 
+# read in mask feature (e.g. ocean water body polygons)
+if isfile(mask_feature_filename):
+    mask_feature = gpd.read_file(mask_feature_filename)
+else:
+    mask_feature = None
+
 wbd8 = wbd8.filter(items=['fossid', 'geometry'])
 wbd8 = wbd8.set_index('fossid')
 flows = flows.explode()
@@ -68,7 +75,7 @@ hydro_id = 'HydroID'
 print ('splitting stream segments at HUC8 boundaries')
 flows = gpd.overlay(flows, wbd8, how='union').explode().reset_index(drop=True)
 
-# check for lake features
+# check for lake features and split flows
 if lakes is not None:
     if len(lakes) > 0:
       print ('splitting stream segments at ' + str(len(lakes)) + ' waterbodies')
@@ -78,6 +85,14 @@ if lakes is not None:
       flows = gpd.overlay(flows, lakes, how='union').explode().reset_index(drop=True)
       lakes_buffer = lakes.copy()
       lakes_buffer['geometry'] = lakes.buffer(lakes_buffer_input) # adding X meter buffer for spatial join comparison (currently using 20meters)
+
+# check for mask features (e.g. ocean water body) and split flow lines
+if mask_feature is not None:
+    if len(mask_feature) > 0:
+      print ('splitting stream segments at ' + str(len(mask_feature)) + ' mask features (e.g. ocean water body)')
+      mask_feature = mask_feature.filter(items=['fid', 'geometry'])
+      #mask_feature = mask_feature.set_index('fid')
+      flows = gpd.overlay(flows, mask_feature, how='union').explode().reset_index(drop=True)
 
 print ('splitting ' + str(len(flows)) + ' stream segments based on ' + str(maxLength) + ' m max length')
 

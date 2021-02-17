@@ -12,10 +12,16 @@ output_catchments_fileName = sys.argv[3]
 output_flows_fileName = sys.argv[4]
 wbd_fileName = sys.argv[5]
 hucCode = str(sys.argv[6])
+mask_layer_fileName = sys.argv[7]
 
 input_catchments = gpd.read_file(input_catchments_fileName)
 wbd = gpd.read_file(wbd_fileName)
 input_flows = gpd.read_file(input_flows_fileName)
+mask_layer = gpd.read_file(mask_layer_fileName)
+
+# add -1 meter buffer to mask polygons to avoid masking catchments that only intersect at boundary
+mask_layer['geometry'] = mask_layer.buffer(-1)
+
 # must drop leading zeroes
 select_flows = tuple(map(str,map(int,wbd[wbd.HUC8.str.contains(hucCode)].fossid)))
 
@@ -41,6 +47,14 @@ if len(output_flows) > 0:
         indices_of_smaller_duplicates = indices_of_duplicate[np.where(areas != np.amax(areas))[0]]
         # print(indices_of_smaller_duplicates)
         output_catchments = output_catchments.drop(output_catchments.index[indices_of_smaller_duplicates])
+
+    # remove catchments that overlap with the mask layer (ocean/greatlakes)
+    print("removing mask layer...")
+    output_catchments = gpd.sjoin(output_catchments, mask_layer, how='left', op='intersects') #options: intersects, within, contains, crosses
+    output_catchments = output_catchments.rename(columns={"index_right": "MaskID"}).fillna(-999)
+    #output_catchments = output_catchments[output_catchments["mask"] == -999]  # Subset hydroTable to exclude catchments that intersect with mask
+    #output_catchments = output_catchments.drop(columns=["mask"])
+    print("done removing mask layer...")
 
     # add geometry column
     output_catchments['areasqkm'] = output_catchments.geometry.area/(1000**2)
