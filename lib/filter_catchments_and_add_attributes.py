@@ -13,6 +13,7 @@ output_flows_fileName = sys.argv[4]
 wbd_fileName = sys.argv[5]
 hucCode = str(sys.argv[6])
 mask_layer_fileName = sys.argv[7]
+nonmodel_catchments_fileName = sys.argv[8]
 
 input_catchments = gpd.read_file(input_catchments_fileName)
 wbd = gpd.read_file(wbd_fileName)
@@ -59,5 +60,9 @@ if len(output_flows) > 0:
     # add geometry column
     output_catchments['areasqkm'] = output_catchments.geometry.area/(1000**2)
 
+    # create output layer with "non-modeled" catchments (lakeid and maskid >= 0)
+    nonmodel_catchments = output_catchments.loc[(output_catchments.MaskID != -999) | (output_catchments.LakeID != -999)]
+
     output_catchments.to_file(output_catchments_fileName, driver="GPKG",index=False)
     output_flows.to_file(output_flows_fileName, driver="GPKG", index=False)
+    nonmodel_catchments.to_file(nonmodel_catchments_fileName, driver="GPKG",index=False)
