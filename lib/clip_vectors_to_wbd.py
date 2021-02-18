@@ -20,19 +20,19 @@ def subset_vector_layers(hucCode,nwm_streams_filename,nhd_streams_filename,nwm_l
     print("Subsetting masking features for HUC{} {}".format(hucUnitLength,hucCode),flush=True)
     landsea = gpd.read_file(landsea_filename, mask = wbd_buffer)
     if not landsea.empty:
-        landsea = gpd.clip(landsea, wbd_buffer)
+        landsea = gpd.clip(landsea, wbd_buffer) # clip polygons to wbd_buffer domain for more efficient processing
         landsea.to_file(subset_landsea_filename,driver=getDriver(subset_landsea_filename),index=False)
     del landsea
 
     # find intersecting lakes and writeout
     print("Subsetting NWM Lakes for HUC{} {}".format(hucUnitLength,hucCode),flush=True)
     nwm_lakes = gpd.read_file(nwm_lakes_filename, mask = wbd_buffer)
-
     if not nwm_lakes.empty:
-        # perform fill process to remove holes/islands in the NWM lake polygons
+        nwm_lakes = gpd.clip(nwm_lakes, wbd_buffer) # clip polygons to wbd_buffer domain for more efficient processing
+        ## perform fill process to remove holes/islands in the NWM lake polygons
         nwm_lakes = nwm_lakes.explode()
-        nwm_lakes_fill_holes=MultiPolygon(Polygon(p.exterior) for p in nwm_lakes['geometry']) # remove donut hole geometries
-        # loop through the filled polygons and insert the new geometry
+        nwm_lakes_fill_holes=MultiPolygon(Polygon(p.exterior) for p in nwm_lakes['geometry']) # remove donut hole (island) geometries
+        ## loop through the filled polygons and insert the new geometry
         for i in range(len(nwm_lakes_fill_holes)):
             nwm_lakes.loc[i,'geometry'] = nwm_lakes_fill_holes[i]
         nwm_lakes.to_file(subset_nwm_lakes_filename,driver=getDriver(subset_nwm_lakes_filename),index=False)
@@ -109,7 +109,7 @@ if __name__ == '__main__':
     parser.add_argument('-f','--wbd-buffer',help='Buffered HUC boundary',required=True)
     parser.add_argument('-m','--nwm-catchments', help='NWM catchments', required=True)
     parser.add_argument('-y','--nhd-headwaters',help='NHD headwaters',required=True)
-    parser.add_argument('-v','--landsea',help='LandSea - land boundary',required=True)
+    parser.add_argument('-v','--landsea',help='LandSea - ocean/water body masking boundary',required=True)
     parser.add_argument('-c','--subset-nhd-streams',help='NHD streams subset',required=True)
     parser.add_argument('-z','--subset-nld-lines',help='Subset of NLD levee vectors for HUC',required=True)
     parser.add_argument('-a','--subset-lakes',help='NWM lake subset',required=True)
