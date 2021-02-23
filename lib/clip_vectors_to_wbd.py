@@ -7,7 +7,7 @@ from os.path import splitext
 from shapely.geometry import MultiPolygon,Polygon,Point
 from utils.shared_functions import getDriver
 
-def subset_vector_layers(hucCode,nwm_streams_filename,nhd_streams_filename,nwm_lakes_filename,nld_lines_filename,nwm_catchments_filename,nhd_headwaters_filename,landsea_filename,wbd_filename,wbd_buffer_filename,subset_nhd_streams_filename,subset_nld_lines_filename,subset_nwm_lakes_filename,subset_nwm_catchments_filename,subset_nhd_headwaters_filename,subset_nwm_streams_filename,subset_landsea_filename,dissolveLinks=False):
+def subset_vector_layers(hucCode,nwm_streams_filename,nhd_streams_filename,nwm_lakes_filename,nld_lines_filename,nwm_catchments_filename,nhd_headwaters_filename,mask_features_filename,wbd_filename,wbd_buffer_filename,subset_nhd_streams_filename,subset_nld_lines_filename,subset_nwm_lakes_filename,subset_nwm_catchments_filename,subset_nhd_headwaters_filename,subset_nwm_streams_filename,subset_mask_features_filename,dissolveLinks=False):
 
     hucUnitLength = len(str(hucCode))
 
@@ -18,14 +18,14 @@ def subset_vector_layers(hucCode,nwm_streams_filename,nhd_streams_filename,nwm_l
 
     # Clip ocean water polygon for future masking ocean areas (where applicable)
     print("Subsetting Mask/Ocean features for HUC{} {}".format(hucUnitLength,hucCode),flush=True)
-    landsea = gpd.read_file(landsea_filename, mask = wbd_buffer)
-    if not landsea.empty:
-        landsea = gpd.clip(landsea, wbd_buffer) # clip polygons to wbd_buffer domain for more efficient processing
-        landsea = landsea.geometry
-        landsea.to_file(subset_landsea_filename,driver=getDriver(subset_landsea_filename),index=False)
+    mask_features = gpd.read_file(mask_features_filename, mask = wbd_buffer)
+    if not mask_features.empty:
+        mask_features = gpd.clip(mask_features, wbd_buffer) # clip polygons to wbd_buffer domain for more efficient processing
+        mask_features = mask_features.geometry
+        mask_features.to_file(subset_mask_features_filename,driver=getDriver(subset_mask_features_filename),index=False)
     else:
         print('*Masking features not present in HUC --> subset layer not created',flush=True)
-    del landsea
+    del mask_features
 
     # find intersecting lakes and writeout
     print("Subsetting NWM Lakes for HUC{} {}".format(hucUnitLength,hucCode),flush=True)
@@ -117,14 +117,14 @@ if __name__ == '__main__':
     parser.add_argument('-f','--wbd-buffer',help='Buffered HUC boundary',required=True)
     parser.add_argument('-m','--nwm-catchments', help='NWM catchments', required=True)
     parser.add_argument('-y','--nhd-headwaters',help='NHD headwaters',required=True)
-    parser.add_argument('-v','--landsea',help='LandSea - ocean/water body masking boundary',required=True)
+    parser.add_argument('-v','--mask-features',help='Mask features - ocean/water body masking boundary',required=True)
     parser.add_argument('-c','--subset-nhd-streams',help='NHD streams subset',required=True)
     parser.add_argument('-z','--subset-nld-lines',help='Subset of NLD levee vectors for HUC',required=True)
     parser.add_argument('-a','--subset-lakes',help='NWM lake subset',required=True)
     parser.add_argument('-n','--subset-catchments',help='NWM catchments subset',required=True)
     parser.add_argument('-e','--subset-nhd-headwaters',help='NHD headwaters subset',required=True,default=None)
     parser.add_argument('-b','--subset-nwm-streams',help='NWM streams subset',required=True)
-    parser.add_argument('-x','--subset-landsea',help='LandSea subset',required=True)
+    parser.add_argument('-x','--subset-mask_features',help='mask_features subset',required=True)
     parser.add_argument('-o','--dissolve-links',help='remove multi-line strings',action="store_true",default=False)
 
     args = vars(parser.parse_args())
@@ -138,14 +138,14 @@ if __name__ == '__main__':
     wbd_buffer_filename = args['wbd_buffer']
     nwm_catchments_filename = args['nwm_catchments']
     nhd_headwaters_filename = args['nhd_headwaters']
-    landsea_filename = args['landsea']
+    mask_features_filename = args['mask_features']
     subset_nhd_streams_filename = args['subset_nhd_streams']
     subset_nld_lines_filename = args['subset_nld_lines']
     subset_nwm_lakes_filename = args['subset_lakes']
     subset_nwm_catchments_filename = args['subset_catchments']
     subset_nhd_headwaters_filename = args['subset_nhd_headwaters']
     subset_nwm_streams_filename = args['subset_nwm_streams']
-    subset_landsea_filename = args['subset_landsea']
+    subset_mask_features_filename = args['subset_mask_features']
     dissolveLinks = args['dissolve_links']
 
-    subset_vector_layers(hucCode,nwm_streams_filename,nhd_streams_filename,nwm_lakes_filename,nld_lines_filename,nwm_catchments_filename,nhd_headwaters_filename,landsea_filename,wbd_filename,wbd_buffer_filename,subset_nhd_streams_filename,subset_nld_lines_filename,subset_nwm_lakes_filename,subset_nwm_catchments_filename,subset_nhd_headwaters_filename,subset_nwm_streams_filename,subset_landsea_filename,dissolveLinks)
+    subset_vector_layers(hucCode,nwm_streams_filename,nhd_streams_filename,nwm_lakes_filename,nld_lines_filename,nwm_catchments_filename,nhd_headwaters_filename,mask_features_filename,wbd_filename,wbd_buffer_filename,subset_nhd_streams_filename,subset_nld_lines_filename,subset_nwm_lakes_filename,subset_nwm_catchments_filename,subset_nhd_headwaters_filename,subset_nwm_streams_filename,subset_mask_features_filename,dissolveLinks)

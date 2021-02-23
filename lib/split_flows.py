@@ -55,19 +55,14 @@ if isfile(lakes_filename):
 else:
     lakes = None
 
-<<<<<<< HEAD
 # read in mask feature (e.g. ocean water body polygons)
 if isfile(mask_feature_filename):
     mask_feature = gpd.read_file(mask_feature_filename)
 else:
     mask_feature = None
 
-wbd8 = wbd8.filter(items=['fossid', 'geometry'])
-wbd8 = wbd8.set_index('fossid')
-=======
 wbd8 = wbd8.filter(items=[FIM_ID, 'geometry'])
 wbd8 = wbd8.set_index(FIM_ID)
->>>>>>> dev
 flows = flows.explode()
 
 # temp
@@ -92,7 +87,6 @@ if lakes is not None:
       lakes_buffer = lakes.copy()
       lakes_buffer['geometry'] = lakes.buffer(lakes_buffer_input) # adding X meter buffer for spatial join comparison (currently using 20meters)
 
-<<<<<<< HEAD
 # check for mask features (e.g. ocean water body) and split flow lines
 if mask_feature is not None:
     if len(mask_feature) > 0:
@@ -101,10 +95,7 @@ if mask_feature is not None:
       #mask_feature = mask_feature.set_index('fid')
       flows = gpd.overlay(flows, mask_feature, how='union').explode().reset_index(drop=True)
 
-print ('splitting ' + str(len(flows)) + ' stream segments based on ' + str(maxLength) + ' m max length')
-=======
 print ('splitting ' + str(len(flows)) + ' stream segments based on ' + str(max_length) + ' m max length')
->>>>>>> dev
 
 # remove empty geometries
 flows = flows.loc[~flows.is_empty,:]

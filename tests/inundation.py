@@ -455,11 +455,15 @@ def __subset_hydroTable_to_forecast(hydroTable,forecast,subset_hucs=None):
                                  hydroTable,
                                  dtype={'HUC':str,'feature_id':str,
                                          'HydroID':str,'stage':float,
-                                         'discharge_cms':float,'LakeID' : int}
+                                         'discharge_cms':float,'LakeID':int}
                                 )
 
         hydroTable.set_index(['HUC','feature_id','HydroID'],inplace=True)
 
+        if 'MaskID' in hydroTable: # MaskID attribute added ~ v3.0.5 (not avialable in older FIM versions)
+            hydroTable['MaskID'] = hydroTable['MaskID'].astype(int)
+            hydroTable = hydroTable[hydroTable["MaskID"] == -999]  # Subset hydroTable to include only non-mask catchments.
+            print('Masking catchments using "MaskID" attribute...')
         hydroTable = hydroTable[hydroTable["LakeID"] == -999]  # Subset hydroTable to include only non-lake catchments.
 
         if hydroTable.empty:

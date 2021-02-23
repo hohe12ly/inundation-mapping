@@ -111,7 +111,7 @@ logFile=$outputRunDataDir/logs/summary.log
 
 ## Define inputs
 export input_WBD_gdb=$inputDataDir/wbd/WBD_National.gpkg
-export input_NWM_Lakes=$inputDataDir/nwm_hydrofabric/nwm_lakes_fix_geom.gpkg
+export input_NWM_Lakes=$inputDataDir/nwm_hydrofabric/nwm_lakes.gpkg
 export input_NWM_Catchments_fr=$inputDataDir/nwm_hydrofabric/nwm_catchments.gpkg
 export input_NWM_Catchments_ms=$inputDataDir/nwm_hydrofabric/nwm_catchments_ms.gpkg
 export input_NWM_Flows_fr=$inputDataDir/nwm_hydrofabric/nwm_flows.gpkg

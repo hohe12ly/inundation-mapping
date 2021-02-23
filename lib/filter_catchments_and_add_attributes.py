@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import argparse
 import sys
+from os import environ
 from utils.shared_variables import FIM_ID
 
 input_catchments_fileName = sys.argv[1]
@@ -15,14 +16,15 @@ wbd_fileName = sys.argv[5]
 hucCode = str(sys.argv[6])
 mask_layer_fileName = sys.argv[7]
 nonmodel_catchments_fileName = sys.argv[8]
+mask_buffer_input = float(environ['mask_buffer_dist_meters'])
 
 input_catchments = gpd.read_file(input_catchments_fileName)
 wbd = gpd.read_file(wbd_fileName)
 input_flows = gpd.read_file(input_flows_fileName)
 mask_layer = gpd.read_file(mask_layer_fileName)
 
-# add -5 meter buffer to mask polygons to avoid masking catchments that only intersect at boundary
-mask_layer['geometry'] = mask_layer.buffer(-5)
+# add -10 meter buffer to mask polygons to avoid masking catchments that only intersect at boundaries (minimal overlap)
+mask_layer['geometry'] = mask_layer.buffer(mask_buffer_input)
 
 # filter segments within huc boundary
 select_flows = tuple(map(str,map(int,wbd[wbd.HUC8.str.contains(hucCode)][FIM_ID])))
