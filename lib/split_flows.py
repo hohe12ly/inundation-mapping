@@ -4,7 +4,7 @@
 Description:
     1) split stream segments based on lake boundaries and input threshold distance
     2) calculate channel slope, manning's n, and LengthKm for each segment
-    3) create unique ids using HUC8 boundaries (and unique 'fossid' column)
+    3) create unique ids using HUC8 boundaries (and unique FIM_ID column)
     4) create network traversal attribute columns (To_Node, From_Node, NextDownID)
     5) create points layer with segment verticies encoded with HydroID's (used for catchment delineation in next step)
 '''
@@ -19,21 +19,22 @@ import argparse
 from tqdm import tqdm
 import time
 from os.path import isfile
-from os import remove
+from os import remove,environ
 from collections import OrderedDict
 import build_stream_traversal
 from utils.shared_functions import getDriver
+from utils.shared_variables import FIM_ID
 
 flows_fileName         = sys.argv[1]
 dem_fileName           = sys.argv[2]
 split_flows_fileName   = sys.argv[3]
 split_points_fileName  = sys.argv[4]
-maxLength              = float(sys.argv[5])
-slope_min              = float(sys.argv[6])
-wbd8_clp_filename      = sys.argv[7]
-lakes_filename         = sys.argv[8]
-lakes_buffer_input     = float(sys.argv[9])
-mask_feature_filename  = sys.argv[10]
+wbd8_clp_filename      = sys.argv[5]
+lakes_filename         = sys.argv[6]
+mask_feature_filename  = sys.argv[7]
+max_length             = float(environ['max_split_distance_meters'])
+slope_min              = float(environ['slope_min'])
+lakes_buffer_input     = float(environ['lakes_buffer_dist_meters'])
 
 wbd = gpd.read_file(wbd8_clp_filename)
 
@@ -47,13 +48,14 @@ if not len(flows) > 0:
     sys.exit(0)
 
 wbd8 = gpd.read_file(wbd8_clp_filename)
-#dem = Raster(dem_fileName)
 dem = rasterio.open(dem_fileName,'r')
+
 if isfile(lakes_filename):
     lakes = gpd.read_file(lakes_filename)
 else:
     lakes = None
 
+<<<<<<< HEAD
 # read in mask feature (e.g. ocean water body polygons)
 if isfile(mask_feature_filename):
     mask_feature = gpd.read_file(mask_feature_filename)
@@ -62,6 +64,10 @@ else:
 
 wbd8 = wbd8.filter(items=['fossid', 'geometry'])
 wbd8 = wbd8.set_index('fossid')
+=======
+wbd8 = wbd8.filter(items=[FIM_ID, 'geometry'])
+wbd8 = wbd8.set_index(FIM_ID)
+>>>>>>> dev
 flows = flows.explode()
 
 # temp
@@ -86,6 +92,7 @@ if lakes is not None:
       lakes_buffer = lakes.copy()
       lakes_buffer['geometry'] = lakes.buffer(lakes_buffer_input) # adding X meter buffer for spatial join comparison (currently using 20meters)
 
+<<<<<<< HEAD
 # check for mask features (e.g. ocean water body) and split flow lines
 if mask_feature is not None:
     if len(mask_feature) > 0:
@@ -95,6 +102,9 @@ if mask_feature is not None:
       flows = gpd.overlay(flows, mask_feature, how='union').explode().reset_index(drop=True)
 
 print ('splitting ' + str(len(flows)) + ' stream segments based on ' + str(maxLength) + ' m max length')
+=======
+print ('splitting ' + str(len(flows)) + ' stream segments based on ' + str(max_length) + ' m max length')
+>>>>>>> dev
 
 # remove empty geometries
 flows = flows.loc[~flows.is_empty,:]
@@ -107,8 +117,8 @@ for i,lineString in tqdm(enumerate(flows.geometry),total=len(flows.geometry)):
     if lineString.length == 0:
         continue
 
-    # existing reaches of less than maxLength
-    if lineString.length < maxLength:
+    # existing reaches of less than max_length
+    if lineString.length < max_length:
         split_flows = split_flows + [lineString]
         line_points = [point for point in zip(*lineString.coords.xy)]
 
@@ -121,7 +131,7 @@ for i,lineString in tqdm(enumerate(flows.geometry),total=len(flows.geometry)):
         slopes = slopes + [slope]
         continue
 
-    splitLength = lineString.length / np.ceil(lineString.length / maxLength)
+    splitLength = lineString.length / np.ceil(lineString.length / max_length)
 
     cumulative_line = []
     line_points = []

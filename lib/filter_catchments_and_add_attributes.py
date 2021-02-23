@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import argparse
 import sys
+from utils.shared_variables import FIM_ID
 
 input_catchments_fileName = sys.argv[1]
 input_flows_fileName = sys.argv[2]
@@ -23,30 +24,27 @@ mask_layer = gpd.read_file(mask_layer_fileName)
 # add -5 meter buffer to mask polygons to avoid masking catchments that only intersect at boundary
 mask_layer['geometry'] = mask_layer.buffer(-5)
 
-# must drop leading zeroes
-select_flows = tuple(map(str,map(int,wbd[wbd.HUC8.str.contains(hucCode)].fossid)))
+# filter segments within huc boundary
+select_flows = tuple(map(str,map(int,wbd[wbd.HUC8.str.contains(hucCode)][FIM_ID])))
 
 if input_flows.HydroID.dtype != 'str': input_flows.HydroID = input_flows.HydroID.astype(str)
 output_flows = input_flows[input_flows.HydroID.str.startswith(select_flows)].copy()
 if output_flows.HydroID.dtype != 'int': output_flows.HydroID = output_flows.HydroID.astype(int)
 
 if len(output_flows) > 0:
+
     # merges input flows attributes and filters hydroids
     if input_catchments.HydroID.dtype != 'int': input_catchments.HydroID = input_catchments.HydroID.astype(int)
     output_catchments = input_catchments.merge(output_flows.drop(['geometry'],axis=1),on='HydroID')
 
     # filter out smaller duplicate features
     duplicateFeatures = np.where(np.bincount(output_catchments['HydroID'])>1)[0]
-    # print(duplicateFeatures)
 
     for dp in duplicateFeatures:
-        # print(dp)
+
         indices_of_duplicate = np.where(output_catchments['HydroID'] == dp)[0]
-        # print(indices_of_duplicate)
         areas = output_catchments.iloc[indices_of_duplicate,:].geometry.area
-        # print(areas)
         indices_of_smaller_duplicates = indices_of_duplicate[np.where(areas != np.amax(areas))[0]]
-        # print(indices_of_smaller_duplicates)
         output_catchments = output_catchments.drop(output_catchments.index[indices_of_smaller_duplicates])
 
     ## remove catchments that overlap with the mask layer (ocean/greatlakes)
