@@ -177,11 +177,21 @@ for i,lineString in tqdm(enumerate(flows.geometry),total=len(flows.geometry)):
 
 split_flows_gdf = gpd.GeoDataFrame({'S0' : slopes ,'geometry':split_flows}, crs=flows.crs, geometry='geometry')
 split_flows_gdf['LengthKm'] = split_flows_gdf.geometry.length * toMetersConversion
+
+# Spatial join lakes buffer attributes to split flows gdf (new 'LakeID' attribute)
 if lakes is not None:
     split_flows_gdf = gpd.sjoin(split_flows_gdf, lakes_buffer, how='left', op='within') #options: intersects, within, contains, crosses
     split_flows_gdf = split_flows_gdf.rename(columns={"index_right": "LakeID"}).fillna(-999)
 else:
     split_flows_gdf['LakeID'] = -999
+
+# Spatial join mask feature attributes to split flows gdf (new 'LakeID' attribute)
+if mask_feature is not None:
+    mask_feature['geometry'] = mask_feature.buffer(-1) # add -1 meter buffer to mask polygons to avoid masking catchments that only intersect at boundary
+    split_flows_gdf = gpd.sjoin(split_flows_gdf, mask_feature, how='left', op='intersects') #options: intersects, within, contains
+    split_flows_gdf = split_flows_gdf.rename(columns={"index_right": "MaskID_flows"}).fillna(-999) # MaskID != -999 will be ignored in inundation.py
+else:
+    split_flows_gdf['MaskID_flows'] = -999
 
 # need to figure out why so many duplicate stream segments for 04010101 FR
 split_flows_gdf = split_flows_gdf.drop_duplicates()

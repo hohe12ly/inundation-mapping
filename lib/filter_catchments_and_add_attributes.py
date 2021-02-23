@@ -20,8 +20,8 @@ wbd = gpd.read_file(wbd_fileName)
 input_flows = gpd.read_file(input_flows_fileName)
 mask_layer = gpd.read_file(mask_layer_fileName)
 
-# add -1 meter buffer to mask polygons to avoid masking catchments that only intersect at boundary
-mask_layer['geometry'] = mask_layer.buffer(-1)
+# add -5 meter buffer to mask polygons to avoid masking catchments that only intersect at boundary
+mask_layer['geometry'] = mask_layer.buffer(-5)
 
 # must drop leading zeroes
 select_flows = tuple(map(str,map(int,wbd[wbd.HUC8.str.contains(hucCode)].fossid)))
@@ -49,20 +49,21 @@ if len(output_flows) > 0:
         # print(indices_of_smaller_duplicates)
         output_catchments = output_catchments.drop(output_catchments.index[indices_of_smaller_duplicates])
 
-    # remove catchments that overlap with the mask layer (ocean/greatlakes)
+    ## remove catchments that overlap with the mask layer (ocean/greatlakes)
     print("removing mask layer...")
-    output_catchments = gpd.sjoin(output_catchments, mask_layer, how='left', op='intersects') #options: intersects, within, contains, crosses
-    output_catchments = output_catchments.rename(columns={"index_right": "MaskID"}).fillna(-999)
-    #output_catchments = output_catchments[output_catchments["mask"] == -999]  # Subset hydroTable to exclude catchments that intersect with mask
-    #output_catchments = output_catchments.drop(columns=["mask"])
+    output_catchments = gpd.sjoin(output_catchments, mask_layer, how='left', op='intersects') #options: intersects, within, contains
+    output_catchments = output_catchments.rename(columns={"index_right": "MaskID_catch"}).fillna(-999)
+    output_catchments['MaskID'] = output_catchments[["MaskID_catch", "MaskID_flows"]].max(axis=1)
+    output_catchments = output_catchments.drop(columns=["MaskID_catch","MaskID_flows"])
     print("done removing mask layer...")
 
     # add geometry column
     output_catchments['areasqkm'] = output_catchments.geometry.area/(1000**2)
 
-    # create output layer with "non-modeled" catchments (lakeid and maskid >= 0)
+    # create output layer with "non-modeled" catchments (lakeid and maskid != -999)
     nonmodel_catchments = output_catchments.loc[(output_catchments.MaskID != -999) | (output_catchments.LakeID != -999)]
 
     output_catchments.to_file(output_catchments_fileName, driver="GPKG",index=False)
     output_flows.to_file(output_flows_fileName, driver="GPKG", index=False)
-    nonmodel_catchments.to_file(nonmodel_catchments_fileName, driver="GPKG",index=False)
+    if not nonmodel_catchments.empty:
+        nonmodel_catchments.to_file(nonmodel_catchments_fileName, driver="GPKG",index=False)

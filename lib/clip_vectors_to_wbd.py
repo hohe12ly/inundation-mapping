@@ -17,18 +17,22 @@ def subset_vector_layers(hucCode,nwm_streams_filename,nhd_streams_filename,nwm_l
     projection = wbd_buffer.crs
 
     # Clip ocean water polygon for future masking ocean areas (where applicable)
-    print("Subsetting masking features for HUC{} {}".format(hucUnitLength,hucCode),flush=True)
+    print("Subsetting Mask/Ocean features for HUC{} {}".format(hucUnitLength,hucCode),flush=True)
     landsea = gpd.read_file(landsea_filename, mask = wbd_buffer)
     if not landsea.empty:
         landsea = gpd.clip(landsea, wbd_buffer) # clip polygons to wbd_buffer domain for more efficient processing
+        landsea = landsea.geometry
         landsea.to_file(subset_landsea_filename,driver=getDriver(subset_landsea_filename),index=False)
+    else:
+        print('*Masking features not present in HUC --> subset layer not created',flush=True)
     del landsea
 
     # find intersecting lakes and writeout
     print("Subsetting NWM Lakes for HUC{} {}".format(hucUnitLength,hucCode),flush=True)
     nwm_lakes = gpd.read_file(nwm_lakes_filename, mask = wbd_buffer)
+    nwm_lakes = nwm_lakes.loc[nwm_lakes.Shape_Area < 18990454000.0] # ignore Great Lake polygons (these are handled by the more detailed mask area features)
     if not nwm_lakes.empty:
-        nwm_lakes = gpd.clip(nwm_lakes, wbd_buffer) # clip polygons to wbd_buffer domain for more efficient processing
+        #nwm_lakes = gpd.clip(nwm_lakes, wbd_buffer, keep_geom_type=True) # clip polygons to wbd_buffer domain for more efficient processing
         ## perform fill process to remove holes/islands in the NWM lake polygons
         nwm_lakes = nwm_lakes.explode()
         nwm_lakes_fill_holes=MultiPolygon(Polygon(p.exterior) for p in nwm_lakes['geometry']) # remove donut hole (island) geometries
@@ -36,6 +40,8 @@ def subset_vector_layers(hucCode,nwm_streams_filename,nhd_streams_filename,nwm_l
         for i in range(len(nwm_lakes_fill_holes)):
             nwm_lakes.loc[i,'geometry'] = nwm_lakes_fill_holes[i]
         nwm_lakes.to_file(subset_nwm_lakes_filename,driver=getDriver(subset_nwm_lakes_filename),index=False)
+    else:
+        print("*NWM Lake features not present in HUC --> subset layer not created",flush=True)
     del nwm_lakes
 
     # find intersecting levee lines
@@ -43,6 +49,8 @@ def subset_vector_layers(hucCode,nwm_streams_filename,nhd_streams_filename,nwm_l
     nld_lines = gpd.read_file(nld_lines_filename, mask = wbd_buffer)
     if not nld_lines.empty:
         nld_lines.to_file(subset_nld_lines_filename,driver=getDriver(subset_nld_lines_filename),index=False)
+    else:
+        print('*NLD Levee line features not present in HUC --> subset layer not created',flush=True)
     del nld_lines
 
     # find intersecting nwm_catchments

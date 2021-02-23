@@ -110,6 +110,24 @@ date -u
 Tstart
 read fsize ncols nrows ndv xmin ymin xmax ymax cellsize_resx cellsize_resy<<<$($libDir/getRasterInfoNative.py $outputHucDataDir/dem.tif)
 
+## RASTERIZE LANDSEA (OCEAN AREA) POLYGON (IF APPLICABLE) ##
+# if [[ -f $outputHucDataDir/LandSea_subset.gpkg && ! -f $outputHucDataDir/LandSea_subset.tif ]]; then
+#   echo -e $startDiv"Rasterize filtered/dissolved ocean or GLake polygon $hucNumber"$stopDiv
+#   date -u
+#   Tstart
+#   gdal_rasterize -ot Int32 -burn $ndv -a_nodata $ndv -init 1 -co "COMPRESS=LZW" -co "BIGTIFF=YES" -co "TILED=YES" -te $xmin $ymin $xmax $ymax -ts $ncols $nrows $outputHucDataDir/LandSea_subset.gpkg $outputHucDataDir/LandSea_subset.tif
+#   Tcount
+# fi
+
+## MASK DEM RASTER TO REMOVE OCEAN AREAS ##
+# if [ -f $outputHucDataDir/LandSea_subset.tif ]; then
+#   echo -e $startDiv"Additional masking to DEM raster to remove ocean or GLake areas in HUC $hucNumber"$stopDiv
+#   date -u
+#   Tstart
+#   gdal_calc.py --quiet --type=Float32 --overwrite --co "COMPRESS=LZW" --co "BIGTIFF=YES" --co "TILED=YES" -A $outputHucDataDir/dem.tif -B $outputHucDataDir/LandSea_subset.tif --calc="(A*B)" --NoDataValue=$ndv --outfile=$outputHucDataDir/"dem.tif"
+#   Tcount
+# fi
+
 ## RASTERIZE NLD MULTILINES ##
 echo -e $startDiv"Rasterize all NLD multilines using zelev vertices"$stopDiv
 date -u
@@ -405,7 +423,7 @@ if [[ -f $outputHucDataDir/LandSea_subset.gpkg && ! -f $outputHucDataDir/LandSea
   Tcount
 fi
 
-## MASK DEM RASTER TO REMOVE OCEAN AREAS ##
+## MASK REM RASTER TO REMOVE OCEAN AREAS ##
 if [ -f $outputHucDataDir/LandSea_subset.tif ]; then
   echo -e $startDiv"Additional masking to REM raster to remove ocean/Glake areas in HUC $hucNumber"$stopDiv
   date -u
