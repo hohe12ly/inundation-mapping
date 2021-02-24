@@ -32,9 +32,9 @@ split_points_fileName  = sys.argv[4]
 wbd8_clp_filename      = sys.argv[5]
 lakes_filename         = sys.argv[6]
 mask_feature_filename  = sys.argv[7]
-max_length             = float(environ['max_split_distance_meters'])
-slope_min              = float(environ['slope_min'])
-lakes_buffer_input     = float(environ['lakes_buffer_dist_meters'])
+max_length             = 1500#float(environ['max_split_distance_meters'])
+slope_min              = 0.001#float(environ['slope_min'])
+lakes_buffer_input     = 20#float(environ['lakes_buffer_dist_meters'])
 
 wbd = gpd.read_file(wbd8_clp_filename)
 
@@ -91,8 +91,9 @@ if lakes is not None:
 if mask_feature is not None:
     if len(mask_feature) > 0:
       print ('splitting stream segments at ' + str(len(mask_feature)) + ' mask features (e.g. ocean water body)')
-      mask_feature = mask_feature.filter(items=['fid', 'geometry'])
-      #mask_feature = mask_feature.set_index('fid')
+      mask_feature = mask_feature.filter(items=['newID', 'geometry'])
+      print(mask_feature)
+      mask_feature = mask_feature.set_index('newID')
       flows = gpd.overlay(flows, mask_feature, how='union').explode().reset_index(drop=True)
 
 print ('splitting ' + str(len(flows)) + ' stream segments based on ' + str(max_length) + ' m max length')
@@ -188,7 +189,6 @@ else:
 
 # Spatial join mask feature attributes to split flows gdf (new 'LakeID' attribute)
 if mask_feature is not None:
-    mask_feature['geometry'] = mask_feature.buffer(-1) # add -1 meter buffer to mask polygons to avoid masking catchments that only intersect at boundary
     split_flows_gdf = gpd.sjoin(split_flows_gdf, mask_feature, how='left', op='intersects') #options: intersects, within, contains
     split_flows_gdf = split_flows_gdf.rename(columns={"index_right": "MaskID_flows"}).fillna(-999) # MaskID != -999 will be ignored in inundation.py
 else:

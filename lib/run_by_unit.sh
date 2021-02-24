@@ -9,6 +9,7 @@ echo -e "agree_DEM_buffer=$agree_DEM_buffer"
 echo -e "wbd_buffer=$wbd_buffer"
 echo -e "ms_buffer_dist=$ms_buffer_dist"
 echo -e "lakes_buffer_dist_meters=$lakes_buffer_dist_meters"
+echo -e "mask_buffer_dist_meters=$mask_buffer_dist_meters"
 echo -e "negative_burn_value=$negative_burn_value"
 echo -e "max_split_distance_meters=$max_split_distance_meters"
 echo -e "mannings_n=$manning_n"
@@ -251,6 +252,7 @@ echo -e $startDiv"Split Derived Reaches $hucNumber"$stopDiv
 date -u
 Tstart
 [ ! -f $outputHucDataDir/demDerived_reaches_split.gpkg ] && \
+echo $libDir/split_flows.py $outputHucDataDir/demDerived_reaches.shp $outputHucDataDir/dem_thalwegCond.tif $outputHucDataDir/demDerived_reaches_split.gpkg $outputHucDataDir/demDerived_reaches_split_points.gpkg $outputHucDataDir/wbd8_clp.gpkg $outputHucDataDir/nwm_lakes_proj_subset.gpkg $outputHucDataDir/LandSea_subset.gpkg
 $libDir/split_flows.py $outputHucDataDir/demDerived_reaches.shp $outputHucDataDir/dem_thalwegCond.tif $outputHucDataDir/demDerived_reaches_split.gpkg $outputHucDataDir/demDerived_reaches_split_points.gpkg $outputHucDataDir/wbd8_clp.gpkg $outputHucDataDir/nwm_lakes_proj_subset.gpkg $outputHucDataDir/LandSea_subset.gpkg
 Tcount
 

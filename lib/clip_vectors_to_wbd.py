@@ -21,7 +21,7 @@ def subset_vector_layers(hucCode,nwm_streams_filename,nhd_streams_filename,nwm_l
     mask_features = gpd.read_file(mask_features_filename, mask = wbd_buffer)
     if not mask_features.empty:
         mask_features = gpd.clip(mask_features, wbd_buffer) # clip polygons to wbd_buffer domain for more efficient processing
-        mask_features = mask_features.geometry
+        #mask_features = mask_features.geometry
         mask_features.to_file(subset_mask_features_filename,driver=getDriver(subset_mask_features_filename),index=False)
     else:
         print('*Masking features not present in HUC --> subset layer not created',flush=True)
