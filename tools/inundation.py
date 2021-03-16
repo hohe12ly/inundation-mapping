@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+# coding: utf-8
 
+import os
 import numpy as np
 import pandas as pd
 from numba import njit, typed, types
@@ -20,7 +22,7 @@ import geopandas as gpd
 
 
 def inundate(
-             rem,catchments,catchment_poly,hydro_table,forecast,mask_type,hucs=None,hucs_layerName=None,
+             rem,catchments,catchment_poly,hydro_table,forecast,mask_type,demderived_reaches_split,src_full_crosswalked,hucs=None,hucs_layerName=None,
              subset_hucs=None,num_workers=1,aggregate=False,inundation_raster=None,inundation_polygon=None,
              depths=None,out_raster_profile=None,out_vector_profile=None,quiet=False
             ):
@@ -151,7 +153,7 @@ def inundate(
 
     # catchment stages dictionary
     if hydro_table is not None:
-        catchmentStagesDict,hucSet = __subset_hydroTable_to_forecast(hydro_table,forecast,subset_hucs)
+        catchmentStagesDict,hucSet = __subset_hydroTable_to_forecast(hydro_table,forecast,demderived_reaches_split,src_full_crosswalked,subset_hucs)
     else:
         raise TypeError("Pass hydro table csv")
 
@@ -445,7 +447,7 @@ def __append_huc_code_to_file_name(fileName,hucCode):
     return("{}_{}{}".format(base_file_path,hucCode,extension))
 
 
-def __subset_hydroTable_to_forecast(hydroTable,forecast,subset_hucs=None):
+def __subset_hydroTable_to_forecast(hydroTable,forecast,demderived_reaches_split,src_full_crosswalked,subset_hucs=None):
 
     if isinstance(hydroTable,str):
         hydroTable = pd.read_csv(
@@ -506,6 +508,37 @@ def __subset_hydroTable_to_forecast(hydroTable,forecast,subset_hucs=None):
     # join tables
     hydroTable = hydroTable.join(forecast,on=['feature_id'],how='inner')
 
+    # root_dir = '/code'
+    # cahaba_data_dir = os.path.join(root_dir, 'projects/cahaba/data')
+    # fim_data_dir = os.path.join(cahaba_data_dir, 'outputs/FR_template/12090301')
+
+    # demDerived_reaches_split = gpd.read_file(os.path.join(fim_data_dir, 'demDerived_reaches_split.gpkg'))
+    demderived_reaches_split = gpd.read_file(demderived_reaches_split)
+    demderived_reaches_split = demderived_reaches_split[['HydroID', 'To_Node', 'S0', 'LengthKm']]
+    demderived_reaches_split = demderived_reaches_split.astype({'HydroID':str})
+
+    hydroTable = hydroTable.merge(demderived_reaches_split[['HydroID', 'To_Node']], on='HydroID')
+
+    # src_full_crosswalked = pd.read_csv(os.path.join(fim_data_dir, 'src_full_crosswalked.csv'))
+    src_full_crosswalked = pd.read_csv(src_full_crosswalked,dtype={'HydroID' : str, 'stage':float})
+    # src_full_crosswalked = pd.read_csv(src_full_crosswalked)
+
+    src_full_crosswalked.rename(columns = {'Stage':'stage'}, inplace = True)
+    src_full_crosswalked = src_full_crosswalked.astype({'HydroID':str, 'stage':str})
+
+    src_full_crosswalked['HydroID'] = src_full_crosswalked['HydroID'].apply(str)
+
+    hydroTable = hydroTable.set_index('HydroID')
+    hydroTable = hydroTable.astype({'stage':float})
+
+    print('hydroTable')
+    print(hydroTable.dtypes)
+
+    print('src_full_crosswalked')
+    print(src_full_crosswalked.dtypes)
+
+    hydroTable = hydroTable.merge(src_full_crosswalked, on=['HydroID', 'stage'])
+
     # initialize dictionary
     catchmentStagesDict = typed.Dict.empty(types.int32,types.float64)
 
@@ -540,6 +573,8 @@ if __name__ == '__main__':
     parser.add_argument('-b','--catchment-poly',help='catchment_vector',required=True)
     parser.add_argument('-t','--hydro-table',help='Hydro-table in csv file format',required=True)
     parser.add_argument('-f','--forecast',help='Forecast discharges in CMS as CSV file',required=True)
+    parser.add_argument('-y','--demderived-reaches-split',help='Hydro-table in csv file format',required=True)
+    parser.add_argument('-z','--src-full-crosswalked',help='Hydro-table in csv file format',required=True)
     parser.add_argument('-u','--hucs',help='Batch mode only: HUCs file to process at. Must match CRS of input rasters',required=False,default=None)
     parser.add_argument('-l','--hucs-layerName',help='Batch mode only. Layer name in HUCs file to use',required=False,default=None)
     parser.add_argument('-j','--num-workers',help='Batch mode only. Number of concurrent processes',required=False,default=1,type=int)

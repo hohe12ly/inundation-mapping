@@ -49,6 +49,8 @@ def run_alpha_test(fim_run_dir, version, test_id, magnitude, compare_to_previous
     else:
         catchment_poly = os.path.join(fim_run_parent, 'gw_catchments_reaches_filtered_addedAttributes_crosswalked.gpkg')
     hydro_table = os.path.join(fim_run_parent, 'hydroTable.csv')
+    demderived_reaches_split = os.path.join(fim_run_parent, 'demDerived_reaches_split.gpkg')
+    src_full_crosswalked = os.path.join(fim_run_parent, 'src_full_crosswalked.csv')
 
     # Map necessary inputs for inundation().
     hucs, hucs_layerName = os.path.join(INPUTS_DIR, 'wbd', 'WBD_National.gpkg'), 'WBDHU8'
@@ -133,7 +135,7 @@ def run_alpha_test(fim_run_dir, version, test_id, magnitude, compare_to_previous
             print("-----> Running inundate() to produce modeled inundation extent for the " + magnitude + " magnitude...")
             try:
                 inundate(
-                         rem,catchments,catchment_poly,hydro_table,forecast,mask_type,hucs=hucs,hucs_layerName=hucs_layerName,
+                         rem,catchments,catchment_poly,hydro_table,forecast,mask_type,demderived_reaches_split,src_full_crosswalked,hucs=hucs,hucs_layerName=hucs_layerName,
                          subset_hucs=current_huc,num_workers=1,aggregate=False,inundation_raster=inundation_raster,inundation_polygon=None,
                          depths=None,out_raster_profile=None,out_vector_profile=None,quiet=True
                         )
