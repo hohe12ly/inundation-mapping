@@ -136,6 +136,10 @@ def write_categorical_flow_files(metadata, workspace):
         if nws_lid == 'Bogus_ID':
             continue
         
+        #if invalid feature_id skip to next site
+        if feature_id is None:
+            continue
+        
         #Get the stages and flows
         stages, flows = get_thresholds(threshold_url, select_by = 'nws_lid', selector = nws_lid, threshold = 'all')
         
@@ -143,7 +147,7 @@ def write_categorical_flow_files(metadata, workspace):
         for category in ['action','minor','moderate','major']:
             #Get flow
             flow = flows.get(category, None)
-            #If flow doesn't exist, skip to next
+            #If flow or feature id are not valid, skip to next site
             if flow is None:
                 continue
             #Otherwise, write 'guts' of a flow file and append to a master DataFrame.

@@ -120,14 +120,13 @@ def generate_rating_curve_metrics(args):
         nwm_recurr_intervals_all = reduce(lambda x,y: pd.merge(x,y, on='feature_id', how='outer'), [recurr_1_5_yr, recurr_5_yr, recurr_10_yr])
         nwm_recurr_intervals_all = pd.melt(nwm_recurr_intervals_all, id_vars=['feature_id'], value_vars=['1.5','5.0','10.0'], var_name='recurr_interval', value_name='discharge_cms')
         
-        # Append catfim data
+        # Append catfim data (already set up in format similar to nwm_recurr_intervals_all)
         cat_fim = pd.read_csv(catfim_flows_filename, dtype={'feature_id':str})
         nwm_recurr_intervals_all = nwm_recurr_intervals_all.append(cat_fim)
         
         # Convert discharge to cfs and filter
         nwm_recurr_intervals_all['discharge_cfs'] = nwm_recurr_intervals_all.discharge_cms * 35.3147
         nwm_recurr_intervals_all = nwm_recurr_intervals_all.filter(items=['discharge_cfs', 'recurr_interval','feature_id']).drop_duplicates()
-
 
         # Identify unique gages
         usgs_crosswalk = hydrotable.filter(items=['location_id', 'feature_id']).drop_duplicates()
