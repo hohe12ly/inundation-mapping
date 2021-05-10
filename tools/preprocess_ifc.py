@@ -13,7 +13,7 @@ flow_file = Path('/Path/to/flow/file')
 geodatabase = 
 flow_file = 
 project_file =
-workspace = r'C:\Temp\deleteme
+workspace = 
 
 
 
