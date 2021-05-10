@@ -1,16 +1,19 @@
 #!/usr/bin/env python
-"""
-Created on Wed Apr 14 09:01:47 2021
 
-@author: trevor.grout
-"""
 from pathlib import Path
 import re
 import pandas as pd
+import geopandas as gpd
+
+PREP_PROJECTION = 'PROJCS["USA_Contiguous_Albers_Equal_Area_Conic_USGS_version",GEOGCS["NAD83",DATUM["North_American_Datum_1983",SPHEROID["GRS 1980",6378137,298.2572221010042,AUTHORITY["EPSG","7019"]],AUTHORITY["EPSG","6269"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433],AUTHORITY["EPSG","4269"]],PROJECTION["Albers_Conic_Equal_Area"],PARAMETER["standard_parallel_1",29.5],PARAMETER["standard_parallel_2",45.5],PARAMETER["latitude_of_center",23],PARAMETER["longitude_of_center",-96],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]]]'
+
+
 
 flow_file = Path('/Path/to/flow/file')
-
-def get_hec_ras_flows(flow_file):
+geodatabase = r'B:\FIM_development\fim_assessment\asrec\Iowa_Flood_Center\zip_files\full_huc8_data\clarksville_IFC\clarksville\07080202\07080202000137\Hydraulics\Hydraulics\Hydraulics.gdb'
+flow_file = r'B:\FIM_development\fim_assessment\asrec\Iowa_Flood_Center\zip_files\full_huc8_data\clarksville_IFC\clarksville\07080202\07080202000137\Hydraulics\07080202000137.f01'
+project_file = r'B:\FIM_development\fim_assessment\asrec\Iowa_Flood_Center\zip_files\full_huc8_data\clarksville_IFC\clarksville\07080202\07080202000137\Hydraulics\07080202000137.prj'
+def get_hec_ras_flows(flow_file, units):
     '''
     Retrieves flows from HEC-RAS flow file.
 
@@ -69,3 +72,36 @@ def get_hec_ras_flows(flow_file):
                 #Append flow information
                 all_flows = all_flows.append(flow_df, ignore_index = True)
     return all_flows
+
+def get_model_units(project_file):
+    file = Path(project_file)
+    with open(file) as f:
+        model_unit_system = f.read().splitlines()[3]
+    return model_unit_system
+            
+#Get spatial data
+def get_xs(geodatabase):
+    geodatabase = Path(geodatabase)
+    gdb_gpd = gpd.read_file(geodatabase, layer = 'XSCutlines')
+    gdb_gpd = gdb_gpd.filter(items= ['RiverCode','ReachCode','ProfileM', 'geometry'])
+    return gdb_gpd
+
+def assign_xs_flows(flow_file, geodatabase):
+    #Get flows from HEC-RAS model
+    flows = get_hec_ras_flows(flow_file)
+    #Get flow units
+    units = {'SI Units':'CMS', 'English Units':'CFS'}
+    model_units = get_model_units(project_file)
+    flow_units = units.get(model_units)
+    #Get spatial XS data
+    xs = get_xs(geodatabase)
+
+        
+    #Join flows with XS
+    xs['ProfileM'] = xs['ProfileM'].astype(str)
+    joined = xs.merge(flows, left_on = 'ProfileM', right_on = 'station')
+    joined.drop(columns = ['river','reach','station'], inplace = True)
+    joined['flow_units'] = flow_units
+    
+    #Reproject to FIM projection and export data to shapefile
+    joined.to_crs(PREP_PROJECTION)
