@@ -10,9 +10,13 @@ PREP_PROJECTION = 'PROJCS["USA_Contiguous_Albers_Equal_Area_Conic_USGS_version",
 
 
 flow_file = Path('/Path/to/flow/file')
-geodatabase = r'B:\FIM_development\fim_assessment\asrec\Iowa_Flood_Center\zip_files\full_huc8_data\clarksville_IFC\clarksville\07080202\07080202000137\Hydraulics\Hydraulics\Hydraulics.gdb'
-flow_file = r'B:\FIM_development\fim_assessment\asrec\Iowa_Flood_Center\zip_files\full_huc8_data\clarksville_IFC\clarksville\07080202\07080202000137\Hydraulics\07080202000137.f01'
-project_file = r'B:\FIM_development\fim_assessment\asrec\Iowa_Flood_Center\zip_files\full_huc8_data\clarksville_IFC\clarksville\07080202\07080202000137\Hydraulics\07080202000137.prj'
+geodatabase = 
+flow_file = 
+project_file =
+workspace = r'C:\Temp\deleteme
+
+
+
 def get_hec_ras_flows(flow_file, units):
     '''
     Retrieves flows from HEC-RAS flow file.
@@ -86,7 +90,7 @@ def get_xs(geodatabase):
     gdb_gpd = gdb_gpd.filter(items= ['RiverCode','ReachCode','ProfileM', 'geometry'])
     return gdb_gpd
 
-def assign_xs_flows(flow_file, geodatabase):
+def assign_xs_flows(flow_file, geodatabase, workspace):
     #Get flows from HEC-RAS model
     flows = get_hec_ras_flows(flow_file)
     #Get flow units
@@ -105,3 +109,6 @@ def assign_xs_flows(flow_file, geodatabase):
     
     #Reproject to FIM projection and export data to shapefile
     joined.to_crs(PREP_PROJECTION)
+    
+    stem = joined.RiverCode.drop_duplicates().item
+    joined.to_file(workspace / f'{stem}_xs.shp')
