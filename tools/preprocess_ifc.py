@@ -120,7 +120,7 @@ def assign_xs_flows(flow_file, geodatabase, workspace):
 import subprocess
 from pathlib import Path
 
-path = 'globus_id:/10280201/'
+path = 'insert_globus_id:/10280201/'
 bashCommand = f"globus ls {path}"
 process = subprocess.Popen(bashCommand.split(), stdout = subprocess.PIPE)
 output, error = process.communicate()
