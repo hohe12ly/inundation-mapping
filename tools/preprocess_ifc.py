@@ -112,3 +112,50 @@ def assign_xs_flows(flow_file, geodatabase, workspace):
     
     stem = joined.RiverCode.drop_duplicates().item
     joined.to_file(workspace / f'{stem}_xs.shp')
+
+
+
+
+#Globus rough draft
+import subprocess
+from pathlib import Path
+
+path = 'globus_id:/10280201/'
+bashCommand = f"globus ls {path}"
+process = subprocess.Popen(bashCommand.split(), stdout = subprocess.PIPE)
+output, error = process.communicate()
+dirs = output.splitlines()
+dirs = [a.decode("utf-8") for a in dirs]
+
+
+model_dictionary = {}
+spatial_dictionary = {}
+for subdir in dirs:
+    patha = f"{path}{subdir}Hydraulics/"
+    bashCommand = f'globus ls {patha}'
+    process = subprocess.Popen(bashCommand.split(), stdout = subprocess.PIPE)
+    output, error = process.communicate()
+    content = output.splitlines()
+    content = [a.decode("utf-8") for a in content]
+   
+    model_contents = []
+    for file in content:
+        final_path = Path(f'{patha}{file}')        
+        if final_path.suffix in ['.p01','.f01','.prj','.g01']:
+            model_contents.append(final_path)
+    model_dictionary[subdir] = model_contents
+   
+   
+    pathb = f"{patha}Hydraulics/"
+    bashCommand = f'globus ls {pathb}'
+    process = subprocess.Popen(bashCommand.split(), stdout = subprocess.PIPE)
+    output, error = process.communicate()
+    content = output.splitlines()
+    content = [a.decode("utf-8") for a in content]
+   
+    spatial_content = []
+    for file in content:
+        final_path = Path(f'{pathb}{file}')
+        if final_path.suffix in ['.mdb']:
+            spatial_content.append(final_path)
+    spatial_dictionary[subdir] = spatial_content
