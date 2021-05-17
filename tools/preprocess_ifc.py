@@ -159,3 +159,47 @@ for subdir in dirs:
         if final_path.suffix in ['.mdb']:
             spatial_content.append(final_path)
     spatial_dictionary[subdir] = spatial_content
+    
+###############################################################################    
+#Using Globus-sdk python library (STILL NEED TO MODIFY)
+import globus_sdk
+
+CLIENT_ID = 'INSERT_CLIENT_ID'
+
+client = globus_sdk.NativeAppAuthClient(CLIENT_ID)
+client.oauth2_start_flow()
+
+authorize_url = client.oauth2_get_authorize_url()
+print('Please go to this URL and login: {0}'.format(authorize_url))
+
+# this is to work on Python2 and Python3 -- you can just use raw_input() or
+# input() for your specific version
+get_input = getattr(__builtins__, 'raw_input', input)
+auth_code = get_input(
+    'Please enter the code you get after login here: ').strip()
+token_response = client.oauth2_exchange_code_for_tokens(auth_code)
+
+globus_auth_data = token_response.by_resource_server['auth.globus.org']
+globus_transfer_data = token_response.by_resource_server['transfer.api.globus.org']
+
+# most specifically, you want these tokens as strings
+AUTH_TOKEN = globus_auth_data['access_token']
+TRANSFER_TOKEN = globus_transfer_data['access_token']
+
+# a GlobusAuthorizer is an auxiliary object we use to wrap the token. In
+# more advanced scenarios, other types of GlobusAuthorizers give us
+# expressive power
+authorizer = globus_sdk.AccessTokenAuthorizer(TRANSFER_TOKEN)
+tc = globus_sdk.TransferClient(authorizer=authorizer)
+
+# high level interface; provides iterators for list responses
+print("My Endpoints:")
+for ep in tc.endpoint_search('INSERT_GLOBUS_DATASET'):
+    print("[{}] {}".format(ep["id"], ep["display_name"]))
+   
+directory=[]
+path = '/10280201'
+for entry in tc.operation_ls(ep['id'], path = path):
+    if entry['type'] == 'dir':
+        subpath = f'{path}/{entry["name"]}'
+        print (entry['name'], entry['type'])    
