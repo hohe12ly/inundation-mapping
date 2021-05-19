@@ -7,16 +7,6 @@ import geopandas as gpd
 
 PREP_PROJECTION = 'PROJCS["USA_Contiguous_Albers_Equal_Area_Conic_USGS_version",GEOGCS["NAD83",DATUM["North_American_Datum_1983",SPHEROID["GRS 1980",6378137,298.2572221010042,AUTHORITY["EPSG","7019"]],AUTHORITY["EPSG","6269"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433],AUTHORITY["EPSG","4269"]],PROJECTION["Albers_Conic_Equal_Area"],PARAMETER["standard_parallel_1",29.5],PARAMETER["standard_parallel_2",45.5],PARAMETER["latitude_of_center",23],PARAMETER["longitude_of_center",-96],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]]]'
 
-
-
-flow_file = Path('/Path/to/flow/file')
-geodatabase = 
-flow_file = 
-project_file =
-workspace = 
-
-
-
 def get_hec_ras_flows(flow_file, units):
     '''
     Retrieves flows from HEC-RAS flow file.
@@ -114,52 +104,82 @@ def assign_xs_flows(flow_file, geodatabase, workspace):
     joined.to_file(workspace / f'{stem}_xs.shp')
 
 
-
-
-#Globus rough draft
+#Get data from globus using GLOBUS-CLI
 import subprocess
 from pathlib import Path
+import re
+import pandas as pd
+# For Reference: https://docs.globus.org/cli/reference/ls/
 
-path = 'insert_globus_id:/10280201/'
-bashCommand = f"globus ls {path}"
+#Global variables
+SOURCE_EP = 
+DEST_EP = 
+DEST_EP_WORKSPACE = '~/Test'
+
+#Get all directories 2 layers deep (hucs/reaches)
+bashCommand = f"globus ls {SOURCE_EP}:/ --recursive --recursive-depth-limit 1 --jmespath DATA[*].[name,type,size] --format unix"
 process = subprocess.Popen(bashCommand.split(), stdout = subprocess.PIPE)
 output, error = process.communicate()
-dirs = output.splitlines()
-dirs = [a.decode("utf-8") for a in dirs]
+hucs_reaches = output.splitlines()
+hucs_reaches = [a.decode("utf-8") for a in hucs_reaches]
+hucs_reaches = [re.split(r'\t+', a) for a in hucs_reaches]
 
+#Filter out hucs_reaches we don't want
+hr_df = pd.DataFrame(hucs_reaches, columns = ['path','type', 'size'])
+hr_df = hr_df[hr_df.path.str.startswith(('1','0'))& hr_df.path.str.contains('/')]
+hr_df = hr_df[hr_df.type != 'file']
+#split datasets to IFC and USACE (need to remove phantom _IFC)
+usace_df = hr_df[hr_df.path.str.contains('_USACE') & ~ hr_df.path.str.endswith('_IFC')].copy()
+ifc_df = hr_df[~hr_df.path.str.contains('_USACE')].copy()
 
-model_dictionary = {}
-spatial_dictionary = {}
-for subdir in dirs:
-    patha = f"{path}{subdir}Hydraulics/"
-    bashCommand = f'globus ls {patha}'
+#######################################################################
+#Example to transfer USACE data
+#usace has small sizes, will download entire contents of these folders
+usace_paths = usace_df.path.to_list()
+for path in usace_paths:
+    bashCommand = f"globus transfer {SOURCE_EP}:/{path} {DEST_EP}:{DEST_EP_WORKSPACE} --recursive"
     process = subprocess.Popen(bashCommand.split(), stdout = subprocess.PIPE)
     output, error = process.communicate()
-    content = output.splitlines()
-    content = [a.decode("utf-8") for a in content]
-   
-    model_contents = []
-    for file in content:
-        final_path = Path(f'{patha}{file}')        
-        if final_path.suffix in ['.p01','.f01','.prj','.g01']:
-            model_contents.append(final_path)
-    model_dictionary[subdir] = model_contents
-   
-   
-    pathb = f"{patha}Hydraulics/"
-    bashCommand = f'globus ls {pathb}'
+
+#######################################################################
+#Example to Transfer IFC data (just model files and hydraulics.gdb)
+ifc_df['model_path'] = ifc_df['path'] + '/Hydraulics'
+ifc_df['gdb_path'] = ifc_df['model_path'] + '/Hydraulics/Hydraulics.gdb'
+
+model_dirs = ifc_df.model_path.to_list()
+gdb_paths = ifc_df.gdb_path.to_list()
+
+#Download models
+for model_dir in model_dirs:
+    #Get model files
+    reach = model_dir.split('/')[-2]
+    bashCommand = f"globus ls {SOURCE_EP}:/{model_dir} --filter ~{reach}.* --jmespath DATA[*].[name,type,size] --format unix"
     process = subprocess.Popen(bashCommand.split(), stdout = subprocess.PIPE)
     output, error = process.communicate()
-    content = output.splitlines()
-    content = [a.decode("utf-8") for a in content]
+    model_files = output.splitlines()
+    model_files = [a.decode("utf-8") for a in model_files]
+    model_files = [re.split(r'\t+', a) for a in model_files]
+    model_files_df = pd.DataFrame(model_files, columns = ['name','type','size'])
+    #Make sure we have files only
+    model_files_df = model_files_df[model_files_df.type == 'file']
    
-    spatial_content = []
-    for file in content:
-        final_path = Path(f'{pathb}{file}')
-        if final_path.suffix in ['.mdb']:
-            spatial_content.append(final_path)
-    spatial_dictionary[subdir] = spatial_content
-    
+    #Download model files
+    model_file_names = model_files_df.name.to_list()
+    for model_file in model_file_names:
+        bashCommand = f"globus transfer {SOURCE_EP}:/{model_dir}/{model_file} {dest_ep}:{DEST_EP_WORKSPACE}/{model_dir}/{model_file}"
+        process = subprocess.Popen(bashCommand.split(), stdout = subprocess.PIPE)
+        output, error = process.communicate()
+
+#Download Hydraulics GDB
+for path in gdb_paths:
+    bashCommand = f"globus transfer {SOURCE_EP}:/{path} {dest_ep}:{DEST_EP_WORKSPACE/{path} --recursive"
+    process = subprocess.Popen(bashCommand.split(), stdout = subprocess.PIPE)
+    output, error = process.communicate()
+
+
+
+
+#Abandoned this in favor of Globus CLI   (Above)  
 ###############################################################################    
 #Using Globus-sdk python library (STILL NEED TO MODIFY)
 import globus_sdk
@@ -170,7 +190,7 @@ client = globus_sdk.NativeAppAuthClient(CLIENT_ID)
 client.oauth2_start_flow()
 
 authorize_url = client.oauth2_get_authorize_url()
-print('Please go to this URL and login: {0}'.format(authorize_url))
+print('Please go to this URL and login:\n\n{0}'.format(authorize_url))
 
 # this is to work on Python2 and Python3 -- you can just use raw_input() or
 # input() for your specific version
