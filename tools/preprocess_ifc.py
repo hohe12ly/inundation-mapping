@@ -7,7 +7,7 @@ import geopandas as gpd
 
 PREP_PROJECTION = 'PROJCS["USA_Contiguous_Albers_Equal_Area_Conic_USGS_version",GEOGCS["NAD83",DATUM["North_American_Datum_1983",SPHEROID["GRS 1980",6378137,298.2572221010042,AUTHORITY["EPSG","7019"]],AUTHORITY["EPSG","6269"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433],AUTHORITY["EPSG","4269"]],PROJECTION["Albers_Conic_Equal_Area"],PARAMETER["standard_parallel_1",29.5],PARAMETER["standard_parallel_2",45.5],PARAMETER["latitude_of_center",23],PARAMETER["longitude_of_center",-96],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]]]'
 
-def get_hec_ras_flows(flow_file, units):
+def get_hec_ras_flows(flow_file):
     '''
     Retrieves flows from HEC-RAS flow file.
 
@@ -67,41 +67,65 @@ def get_hec_ras_flows(flow_file, units):
                 all_flows = all_flows.append(flow_df, ignore_index = True)
     return all_flows
 
-def get_model_units(project_file):
+def get_model_info(project_file):
     file = Path(project_file)
     with open(file) as f:
-        model_unit_system = f.read().splitlines()[3]
-    return model_unit_system
-            
+        contents = f.read().splitlines()
+        [plan_file_ext] = [i.split('=')[-1] for i in contents if i.startswith('Current Plan=')]
+        model_unit_system = contents[3]
+    return model_unit_system, plan_file_ext
+ 
+def get_model_files(plan_file):
+    file = Path(plan_file)
+    with open(file) as f:
+        contents = f.read().splitlines()
+        [geom_file_ext] = [i.split('=')[-1] for i in contents if i.startswith('Geom File=')]
+        [flow_file_ext] = [i.split('=')[-1] for i in contents if i.startswith('Flow File=')]
+    return geom_file_ext, flow_file_ext
+           
 #Get spatial data
-def get_xs(geodatabase):
+def get_xs(source, geodatabase):
     geodatabase = Path(geodatabase)
-    gdb_gpd = gpd.read_file(geodatabase, layer = 'XSCutlines')
-    gdb_gpd = gdb_gpd.filter(items= ['RiverCode','ReachCode','ProfileM', 'geometry'])
+    if source == 'ifc':
+        gdb_gpd = gpd.read_file(geodatabase, layer = 'XSCutlines')
+        gdb_gpd = gdb_gpd.filter(items= ['RiverCode','ReachCode','ProfileM', 'geometry'])
+    elif source == 'usace':
+        gdb_gpd = gpd.read_file(geodatabase, layer = 'S_XS')
+        gdb_gpd = gdb_gpd.filter(items= ['WTR_NM','STREAM_STN','geometry'])
     return gdb_gpd
 
-def assign_xs_flows(flow_file, geodatabase, workspace):
+def assign_xs_flows(source, flow_file, project_file, geodatabase, workspace):
     #Get flows from HEC-RAS model
     flows = get_hec_ras_flows(flow_file)
     #Get flow units
     units = {'SI Units':'CMS', 'English Units':'CFS'}
-    model_units = get_model_units(project_file)
+    model_units, trash = get_model_info(project_file)
     flow_units = units.get(model_units)
     #Get spatial XS data
-    xs = get_xs(geodatabase)
+    xs = get_xs(source, geodatabase)
 
-        
-    #Join flows with XS
-    xs['ProfileM'] = xs['ProfileM'].astype(str)
-    joined = xs.merge(flows, left_on = 'ProfileM', right_on = 'station')
-    joined.drop(columns = ['river','reach','station'], inplace = True)
-    joined['flow_units'] = flow_units
-    
+    #Merge flows to XS
+    if source == 'ifc':        
+        #Join flows with XS
+        xs['ProfileM'] = xs['ProfileM'].astype(str)
+        joined = xs.merge(flows, left_on = 'ProfileM', right_on = 'station')
+        joined.drop(columns = ['river','reach','station'], inplace = True)
+        joined['flow_units'] = flow_units
+    elif source == 'usace':
+        xs['STREAM_STN'] = xs['STREAM_STN'].astype(str)
+        joined = xs.merge(flows, left_on = 'STREAM_STN', right_on = 'station')
+        joined.drop(colunns = ['river','reach','station'], inplace = True)
+        joined['flow_units'] = flow_units
+                
     #Reproject to FIM projection and export data to shapefile
     joined.to_crs(PREP_PROJECTION)
     
     stem = joined.RiverCode.drop_duplicates().item
     joined.to_file(workspace / f'{stem}_xs.shp')
+
+
+
+
 
 
 #Get data from globus using GLOBUS-CLI
@@ -175,6 +199,30 @@ for path in gdb_paths:
     bashCommand = f"globus transfer {SOURCE_EP}:/{path} {dest_ep}:{DEST_EP_WORKSPACE/{path} --recursive"
     process = subprocess.Popen(bashCommand.split(), stdout = subprocess.PIPE)
     output, error = process.communicate()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
