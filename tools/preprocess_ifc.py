@@ -111,23 +111,58 @@ def assign_xs_flows(source, flow_file, project_file, geodatabase, workspace):
         joined = xs.merge(flows, left_on = 'ProfileM', right_on = 'station')
         joined.drop(columns = ['river','reach','station'], inplace = True)
         joined['flow_units'] = flow_units
+        stem = joined.RiverCode.unique().item()
     elif source == 'usace':
         xs['STREAM_STN'] = xs['STREAM_STN'].astype(str)
         joined = xs.merge(flows, left_on = 'STREAM_STN', right_on = 'station')
-        joined.drop(colunns = ['river','reach','station'], inplace = True)
+        joined.drop(columns = ['river','reach','station'], inplace = True)
         joined['flow_units'] = flow_units
-                
+        stem = joined.WTR_NM.unique().item()
+    
+    joined.rename(columns = {'Number of Profiles':'Num_Profi'}, inplace = True)          
     #Reproject to FIM projection and export data to shapefile
     joined.to_crs(PREP_PROJECTION)
-    
-    stem = joined.RiverCode.drop_duplicates().item
+    #Write to file
     joined.to_file(workspace / f'{stem}_xs.shp')
+    
+###############################################################################
+#Preprocess IFC data
+#Top level directory
+directory = Path('Path to hydraulic models')
+subdirs = [subdir for subdir in directory.iterdir() if subdir.is_dir()]
+#Define workspace and create if it doesn't exist
+workspace = Path('Path to workspace')
+workspace.mkdir(exist_ok = True, parents = True)
+#Define model source (usace or ifc)
+source = 'usace'
+for sub in subdirs:
+    #Find the project file in the 'Simulations' directory
+    [project_file] = [file for file in sub.rglob('*.prj') if file.parent.name == 'Simulations']
+    project_file_dir = project_file.parent
+    #from project file get the plan file extension
+    trash, plan_file_ext = get_model_info(project_file)
+    #Get the plan file specified in project file
+    plan_file = list(project_file_dir.glob(f'*.{plan_file_ext}'))
+    #If plan file exists then get the flow file
+    if plan_file:
+        [plan_file] = plan_file
+        trash, flow_file_ext= get_model_files(plan_file)
+        [flow_file] = list(project_file_dir.glob(f'*.{flow_file_ext}'))
+    #If the plan file does not exist, find the plan file that is present in directory (assumes 1) and get the flow file specified in that plan file.
+    else:
+        print(f'using available plan file {project_file_dir}')
+        [plan_file] = list(project_file_dir.glob(f'*.p0*'))
+        trash, flow_file_ext= get_model_files(plan_file)
+        [flow_file] = list(project_file_dir.glob(f'*.{flow_file_ext}'))
+
+    #Find the geodatabase in subdir
+    [geodatabase] = [gdb for gdb in sub.rglob('*.gdb')]
+    assign_xs_flows(source, flow_file, project_file, geodatabase, workspace)
 
 
 
 
-
-
+###############################################################################
 #Get data from globus using GLOBUS-CLI
 import subprocess
 from pathlib import Path
@@ -201,73 +236,4 @@ for path in gdb_paths:
     output, error = process.communicate()
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#Abandoned this in favor of Globus CLI   (Above)  
-###############################################################################    
-#Using Globus-sdk python library (STILL NEED TO MODIFY)
-import globus_sdk
-
-CLIENT_ID = 'INSERT_CLIENT_ID'
-
-client = globus_sdk.NativeAppAuthClient(CLIENT_ID)
-client.oauth2_start_flow()
-
-authorize_url = client.oauth2_get_authorize_url()
-print('Please go to this URL and login:\n\n{0}'.format(authorize_url))
-
-# this is to work on Python2 and Python3 -- you can just use raw_input() or
-# input() for your specific version
-get_input = getattr(__builtins__, 'raw_input', input)
-auth_code = get_input(
-    'Please enter the code you get after login here: ').strip()
-token_response = client.oauth2_exchange_code_for_tokens(auth_code)
-
-globus_auth_data = token_response.by_resource_server['auth.globus.org']
-globus_transfer_data = token_response.by_resource_server['transfer.api.globus.org']
-
-# most specifically, you want these tokens as strings
-AUTH_TOKEN = globus_auth_data['access_token']
-TRANSFER_TOKEN = globus_transfer_data['access_token']
-
-# a GlobusAuthorizer is an auxiliary object we use to wrap the token. In
-# more advanced scenarios, other types of GlobusAuthorizers give us
-# expressive power
-authorizer = globus_sdk.AccessTokenAuthorizer(TRANSFER_TOKEN)
-tc = globus_sdk.TransferClient(authorizer=authorizer)
-
-# high level interface; provides iterators for list responses
-print("My Endpoints:")
-for ep in tc.endpoint_search('INSERT_GLOBUS_DATASET'):
-    print("[{}] {}".format(ep["id"], ep["display_name"]))
    
-directory=[]
-path = '/10280201'
-for entry in tc.operation_ls(ep['id'], path = path):
-    if entry['type'] == 'dir':
-        subpath = f'{path}/{entry["name"]}'
-        print (entry['name'], entry['type'])    
