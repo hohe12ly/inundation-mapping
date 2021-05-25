@@ -236,4 +236,24 @@ for path in gdb_paths:
     output, error = process.communicate()
 
 
-   
+##############################################################################
+#Single TIME PREPROCESSING USACE DATA
+#CONVERT ALL MDB to SHAPEFILE (CANT SEEM TO DO THIS OPEN SOURCE)
+#CAN ONLY DO IN ARCMAP as ARCPRO DOES NOT RECOGNIZE MDB!!!!!!!!!
+#Get all mdb
+import os
+import arcpy
+PATH = 'Path to HUC 8 datasets
+mdbs = [os.path.join(dp, f) for dp, dn, filenames in os.walk(PATH) for f in filenames if os.path.splitext(f)[1] == '.mdb']
+for mdb in mdbs:
+    print(mdb)
+    #Write geodatabase
+    out_directory = os.path.dirname(mdb)
+    gdb_name = os.path.splitext(os.path.basename(mdb))[0]
+    arcpy.CreateFileGDB_management(out_folder_path=out_directory, out_name=gdb_name, out_version="CURRENT")
+    #Copy mdb layers from mdb to gdb
+    spatial_layers = ['S_Fld_Haz_Ar','S_Profil_Basln','S_XS']
+    for layer in spatial_layers:
+        in_layer = os.path.join(mdb,'FIRM_Spatial_Layers',layer)
+        out_layer = os.path.join(out_directory, gdb_name+'.gdb',layer)
+        arcpy.Copy_management(in_layer,out_layer)   
