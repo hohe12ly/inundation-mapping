@@ -11,37 +11,56 @@ API_BASE_URL=
 metadata_url = f'{API_BASE_URL}/metadata'
 threshold_url = f'{API_BASE_URL}/nws_threshold'
 
-#Get all nws_lid sites with datums
-conus_list, conus_dataframe = get_metadata(metadata_url, select_by = 'nws_lid', selector = ['all'], must_include = 'nws_data.rfc_forecast_point', upstream_trace_distance = 10, downstream_trace_distance = 10 )
-dictionary = {}
-for metadata in conus_list:
-    #Only use USGS datums for now
-    nws, usgs = get_datum(metadata)    
-    #If USGS datum is not supplied, skip
-    if not usgs.get('datum'):
-        continue
-    #If USGS site code not supplied, skip
-    if not usgs.get('usgs_site_code'):
-        continue    
-    datum = usgs.get('datum')
 
-    if usgs.get('vcs') == 'NGVD29':                
-        continue
-        # #Convert NGVD to NAVD if needed
-        # adj_ft = ngvd_to_navd_ft(datum_info = usgs, region = 'contiguous')
-        # datum = datum + adj_ft
+
+
+#Get all possible mainstem segments
+print('Getting list of mainstem segments')
+#Import list of evaluated sites
+list_of_sites = pd.read_csv(EVALUATED_SITES_CSV)['Total_List'].to_list()
+#The entire routine to get mainstems is hardcoded in this function.
+ms_segs = mainstem_nwm_segs(metadata_url, list_of_sites)
+
+
+def get_thresh_elevs(sites):
+    if not type(sites) == 'list':
+        sites = [sites]
+        
+    #Get all nws_lid sites with datums
+    metadata_list, metadata_dataframe = get_metadata(metadata_url, select_by = 'usgs_site_code', selector = sites, upstream_trace_distance = 10, downstream_trace_distance = 10 )
+    thresh_elevs_m_dict = {}
     
-    #Get stages for site
-    stages,flows = get_thresholds(threshold_url, select_by='nws_lid', selector=usgs.get('nws_lid'), threshold = 'all')
-    threshold_categories = ['action','minor','moderate','major']
-    #Check that valid threshold stages are supplied
-    if not any([stages[threshold] for threshold in threshold_categories]):
-        #Skipping because no threshold stages available
-        continue
-    #Convert stages to elevations
-    threshold_elevation = {threshold: stages[threshold] + datum for threshold in threshold_categories}
-    #Write site and thresholds/elevations to dictionary
-    dictionary[usgs['usgs_site_code']] = threshold_elevation
+    for metadata in metadata_list:
+        #Only use USGS datums for now
+        nws, usgs = get_datum(metadata)    
+    
+        #Skip certain sites
+        if not (usgs.get('datum') or usgs.get('usgs_site_code')) :
+            print('skipping')
+            continue
+        
+        #Get datum
+        datum = usgs.get('datum')
+        if usgs.get('vcs') == 'NGVD29':                
+            print('ngvd')
+            continue
+            #Convert NGVD to NAVD if needed
+            #adj_ft = ngvd_to_navd_ft(datum_info = usgs, region = 'contiguous')
+            #datum = datum + adj_ft
+        
+        #Get stages for site
+        stages,flows = get_thresholds(threshold_url, select_by='nws_lid', selector=usgs.get('nws_lid'), threshold = 'all')
+        threshold_categories = ['action','minor','moderate','major']
+        #Check that at least 1 threshold is valid per site
+        if not any([stages[threshold] for threshold in threshold_categories]):
+            #Skipping because no threshold stages available
+            continue
+    
+        #Convert stages to elevations
+        threshold_elevation_m = {threshold: round((stages[threshold] + datum)/3.28084,2) for threshold in threshold_categories if stages[threshold]}
+        #Write site and thresholds/elevations to dictionary
+        thresh_elevs_m_dict[usgs['usgs_site_code']] = threshold_elevation_m
+    return thresh_elevs_m_dict, metadata_list
 ###############################################################################
 #Step 2: Get HAND stage (action water surface elevation - HAND datum) --> use usgs_elev_table.csv to get HAND datum/HydroID
 #Path to FIM output
@@ -52,37 +71,78 @@ for run in subdirs:
     usgs_elev_table = run / 'usgs_elev_table.csv'
     hydro_table = run / 'hydroTable.csv'
 
-    if usgs_elev_table.exists and hydro_table.exists:
-        #Read Tables
-        usgs_elev_df = pd.read_csv(usgs_elev_table, dtype = {'location_id':str, 'HydroID':int})        
-        hydro_table_df = pd.read_csv(hydro_table, dtype = {'HydroID':int,'feature_id':int,'HUC':str})
+    if not (usgs_elev_table.exists() and hydro_table.exists()):
+        print("Tables don't exist")
+        continue
+    
+    
+    #Read Tables
+    usgs_elev_df = pd.read_csv(usgs_elev_table, dtype = {'location_id':str, 'HydroID':int})        
+    hydro_table_df = pd.read_csv(hydro_table, dtype = {'HydroID':int,'feature_id':int,'HUC':str})
+    
+    #Dictionary of HAND datums and HydroIDs
+    site_hand_datums = usgs_elev_df.set_index('location_id')['dem_adj_elevation'].to_dict()
+    site_hydroid = usgs_elev_df.set_index('location_id')['HydroID'].to_dict()
+    #for each location 
+    for location in site_hand_datums:
+        #get datum and hydroid
+        hand_datum_m = site_hand_datums[location]
+        hydroid = site_hydroid[location]
+        #query appropriate rating curve
+        rating_curve = hydro_table_df.query(f'HydroID == {hydroid}').copy()
+        rating_curve['elevation_navd88_m'] = rating_curve['stage'] + hand_datum_m
         
-        #Dictionary of HAND datums and HydroIDs
-        site_hand_datums = usgs_elev_df.set_index('location_id')['dem_adj_elevation'].to_dict()
-        site_hydroid = usgs_elev_df.set_index('location_id')['HydroID'].to_dict()
+        #Step 3: Get HAND flow (Use rating curve to get flow corresponding to HAND stage) --> Use hydroTable.csv
+        dictionary, metadata = get_thresh_elevs(location)
+        if not dictionary.get(location):
+            print('skipping')
+            continue
+        #Create DataFrame of thresholds/elevations for site
+        interpolated_flow_cms_df = pd.DataFrame(dictionary[location].items(), columns = ['Threshold','Elevation_m'])
+        #Interpolate HAND flow based on elevation
+        interpolated_flow_cms_df['flow_cms'] = np.interp(interpolated_flow_cms_df['Elevation_m'], rating_curve['elevation_navd88_m'], rating_curve['discharge_cms'], left = np.nan, right = np.nan)
+
+        #For Location = 07016500 (UNNM7, huc = 07140103)
+        #WRDS FLOWS = Action: 8880.6 cfs, Minor: 11192.7 cfs, Moderate: 22131 cfs, Major: 32573.2 cfs
+        #Interpolated Flows (using enforced WSE level) = Action: 3787.96 cfs, Minor: 6349.38 cfs, Moderate: 35299.98 cfs, Major: 80746.83 cfs
+        # CSI: Action: 0.274, Minor: 0.317, Moderate: 0.544, Major:0.606
+        # FAR: Action: 0.656, Minor: 0.582, Moderate: 0.268, Major: 0.187
+        # TPR: Action: 0.581, Minor: 0.565, Moderate: 0.680, Major: 0.704
         
-        #for each location 
-        for location in site_hand_datums:
-            #get datum and hydroid
-            hand_datum = site_hand_datums[location]
-            hydroid = site_hydroid[location]
-            #query appropriate rating curve
-            rating_curve = hydro_table_df.query(f'HydroID == {hydroid}').copy()
-            rating_curve['elevation_navd88_ft'] = rating_curve['stage']*3.28084 + hand_datum
-            
-            
-            
-            ####
-            #!!!TEST THIS SECTION!!!
-            #Step 3: Get HAND flow (Use rating curve to get flow corresponding to HAND stage) --> Use hydroTable.csv
-            #Create DataFrame of thresholds/elevations for site
-            interpolated_flow_cms_df = pd.DataFrame(dictionary[location].items(), columns = ['Threshold','Elevation'])
-            #Interpolate HAND flow based on elevation
-            interpolated_flow_cms_df['flow_cms'] = np.interp(interpolated_flow_cms_df['Elevation'], rating_curve['elevation_navd88_ft'], rating_curve['discharge'], left = np.nan, right = np.nan)
+        #Step 4: Apply flow to all NWM segments (10 mi upstream/downstream)
+        #Get mainstems segments (focus on mainstems)
 
+        #Get mainstem segments of LID by intersecting LID segments with known mainstem segments.
+        [metadata] = metadata
+        segments = get_nwm_segs(metadata)        
+        #######################################################################
+        #WORKS TO THIS POINT###################################################
+        #######################################################################
+        
+        site_ms_segs = set(segments).intersection(ms_segs)
+        segments = list(site_ms_segs)  
+        
+        
+        #Write flow file
+        #if no segments, write message and exit out
+        if not segments:
+            print(f'{lid} no segments')
+            message = f'{lid}:missing nwm segments'
+            all_messages.append(message)
+            continue
+        #For each flood category
+        for category in flood_categories:
+            #Get the flow
+            flow = flows[category]
+            #If there is a valid flow value, write a flow file.
+            if flow:
+                #round flow to nearest hundredth
+                flow = round(flow,2)
+                #Create the guts of the flow file.
+                flow_info = flow_data(segments,flow, convert_to_cms = False)
+                #Define destination path and create folders
+                output_file = workspace / huc / lid / category / (f'ahps_{lid}_huc_{huc}_flows_{category}.csv') 
+                output_file.parent.mkdir(parents = True, exist_ok = True)
+                #Write flow file to file
+                flow_info.to_csv(output_file, index = False)                                                                                
 
-            #Step 4: Apply flow to all NWM segments (10 mi upstream/downstream)
-            #Get mainstems segments (focus on mainstems)
-            #Do intersection with NWM segments returned from original site and mainstems
-            #Write flow file
-            
