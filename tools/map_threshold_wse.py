@@ -64,25 +64,27 @@ def get_thresh_elevs(sites):
 ###############################################################################
 #Step 2: Get HAND stage (action water surface elevation - HAND datum) --> use usgs_elev_table.csv to get HAND datum/HydroID
 #Path to FIM output
-fim_outputs = Path('/Path/to/fim/output')
-subdirs = [i for i in fim_outputs.iterdir() if i.is_dir()]
+fim_output_dir = Path('/Path/to/fim/output')
+fim_subdirs = [i for i in fim_outputs.iterdir() if i.is_dir()]
+flood_categories = ['action','minor','moderate','major','record']
 #Loop through each folder
-for run in subdirs:
-    usgs_elev_table = run / 'usgs_elev_table.csv'
-    hydro_table = run / 'hydroTable.csv'
-
+for subdir in fim_subdirs:    
+    usgs_elev_table = subdir / 'usgs_elev_table.csv'
+    hydro_table = subdir / 'hydroTable.csv'
+    #Verify tables exist
     if not (usgs_elev_table.exists() and hydro_table.exists()):
-        print("Tables don't exist")
         continue
     
+    #Get HUC unit
+    huc = subdir.name
     
     #Read Tables
-    usgs_elev_df = pd.read_csv(usgs_elev_table, dtype = {'location_id':str, 'HydroID':int})        
+    usgs_elev_df = pd.read_csv(usgs_elev_table, dtype = {'location_id':str, 'HydroID':int}, index_col = 'location_id')        
     hydro_table_df = pd.read_csv(hydro_table, dtype = {'HydroID':int,'feature_id':int,'HUC':str})
     
     #Dictionary of HAND datums and HydroIDs
-    site_hand_datums = usgs_elev_df.set_index('location_id')['dem_adj_elevation'].to_dict()
-    site_hydroid = usgs_elev_df.set_index('location_id')['HydroID'].to_dict()
+    site_hand_datums = usgs_elev_df['dem_adj_elevation'].to_dict()
+    site_hydroid = usgs_elev_df['HydroID'].to_dict()
     #for each location 
     for location in site_hand_datums:
         #get datum and hydroid
@@ -94,31 +96,26 @@ for run in subdirs:
         
         #Step 3: Get HAND flow (Use rating curve to get flow corresponding to HAND stage) --> Use hydroTable.csv
         dictionary, metadata = get_thresh_elevs(location)
-        if not dictionary.get(location):
-            print('skipping')
-            continue
+        lid = metadata['identifiers']['nws_lid'].lower()
         #Create DataFrame of thresholds/elevations for site
         interpolated_flow_cms_df = pd.DataFrame(dictionary[location].items(), columns = ['Threshold','Elevation_m'])
         #Interpolate HAND flow based on elevation
         interpolated_flow_cms_df['flow_cms'] = np.interp(interpolated_flow_cms_df['Elevation_m'], rating_curve['elevation_navd88_m'], rating_curve['discharge_cms'], left = np.nan, right = np.nan)
-
+        #Create flows dictionary
+        flows = interpolated_flow_cms_df.set_index('Threshold')['flow_cms'].to_dict()
+        
+        
         #For Location = 07016500 (UNNM7, huc = 07140103)
-        #WRDS FLOWS = Action: 8880.6 cfs, Minor: 11192.7 cfs, Moderate: 22131 cfs, Major: 32573.2 cfs
-        #Interpolated Flows (using enforced WSE level) = Action: 3787.96 cfs, Minor: 6349.38 cfs, Moderate: 35299.98 cfs, Major: 80746.83 cfs
+        #WRDS FLOWS = Action: 8,880.6 cfs, Minor: 11,192.7 cfs, Moderate: 22,131 cfs, Major: 32,573.2 cfs
+        #Interpolated Flows (using enforced WSE level) = Action: 3,787.96 cfs, Minor: 6,349.38 cfs, Moderate: 35,299.98 cfs, Major: 80746.83 cfs
         # CSI: Action: 0.274, Minor: 0.317, Moderate: 0.544, Major:0.606
         # FAR: Action: 0.656, Minor: 0.582, Moderate: 0.268, Major: 0.187
         # TPR: Action: 0.581, Minor: 0.565, Moderate: 0.680, Major: 0.704
         
         #Step 4: Apply flow to all NWM segments (10 mi upstream/downstream)
-        #Get mainstems segments (focus on mainstems)
-
         #Get mainstem segments of LID by intersecting LID segments with known mainstem segments.
-        [metadata] = metadata
-        segments = get_nwm_segs(metadata)        
-        #######################################################################
-        #WORKS TO THIS POINT###################################################
-        #######################################################################
-        
+        [metadata_dict] = metadata
+        segments = get_nwm_segs(metadata_dict)        
         site_ms_segs = set(segments).intersection(ms_segs)
         segments = list(site_ms_segs)  
         
@@ -133,7 +130,7 @@ for run in subdirs:
         #For each flood category
         for category in flood_categories:
             #Get the flow
-            flow = flows[category]
+            flow = flows.get(category)
             #If there is a valid flow value, write a flow file.
             if flow:
                 #round flow to nearest hundredth
