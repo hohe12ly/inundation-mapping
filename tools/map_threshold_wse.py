@@ -65,6 +65,9 @@ def get_thresh_elevs(sites):
 #Step 2: Get HAND stage (action water surface elevation - HAND datum) --> use usgs_elev_table.csv to get HAND datum/HydroID
 #Path to FIM output
 fim_output_dir = Path('/Path/to/fim/output')
+workspace = Path('Path/to/workspace')
+
+
 fim_subdirs = [i for i in fim_outputs.iterdir() if i.is_dir()]
 flood_categories = ['action','minor','moderate','major','record']
 #Loop through each folder
@@ -103,8 +106,7 @@ for subdir in fim_subdirs:
         interpolated_flow_cms_df['flow_cms'] = np.interp(interpolated_flow_cms_df['Elevation_m'], rating_curve['elevation_navd88_m'], rating_curve['discharge_cms'], left = np.nan, right = np.nan)
         #Create flows dictionary
         flows = interpolated_flow_cms_df.set_index('Threshold')['flow_cms'].to_dict()
-        
-        
+                
         #For Location = 07016500 (UNNM7, huc = 07140103)
         #WRDS FLOWS = Action: 8,880.6 cfs, Minor: 11,192.7 cfs, Moderate: 22,131 cfs, Major: 32,573.2 cfs
         #Interpolated Flows (using enforced WSE level) = Action: 3,787.96 cfs, Minor: 6,349.38 cfs, Moderate: 35,299.98 cfs, Major: 80746.83 cfs
