@@ -46,11 +46,9 @@ def get_thresh_elevs(sites):
         #Get datum
         datum = usgs.get('datum')
         if usgs.get('vcs') == 'NGVD29':                
-            print('ngvd')
-            continue
             #Convert NGVD to NAVD if needed
-            #adj_ft = ngvd_to_navd_ft(datum_info = usgs, region = 'contiguous')
-            #datum = datum + adj_ft
+            adj_ft = ngvd_to_navd_ft(datum_info = usgs, region = 'contiguous')
+            datum = datum + adj_ft
         
         #Get stages for site
         stages,flows = get_thresholds(threshold_url, select_by='nws_lid', selector=usgs.get('nws_lid'), threshold = 'all')
@@ -76,6 +74,7 @@ fim_subdirs = [i for i in fim_output_dir.iterdir() if i.is_dir()]
 flood_categories = ['action','minor','moderate','major','record']
 #Loop through each folder
 for subdir in fim_subdirs:    
+    print(f'Working on {subdir}')
     usgs_elev_table = subdir / 'usgs_elev_table.csv'
     hydro_table = subdir / 'hydroTable.csv'
     #Verify tables exist
