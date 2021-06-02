@@ -18,9 +18,6 @@ EVALUATED_SITES_CSV = os.getenv("EVALUATED_SITES_CSV")
 metadata_url = f'{API_BASE_URL}/metadata'
 threshold_url = f'{API_BASE_URL}/nws_threshold'
 
-
-
-
 def get_thresh_elevs(sites):
     if not isinstance(sites,list):
         sites = [sites]
