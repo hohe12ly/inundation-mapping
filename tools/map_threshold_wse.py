@@ -1,18 +1,22 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue May 25 12:30:34 2021
+#!/usr/bin/env python3
 
-@author: Trevor.Grout
-"""
+from pathlib import Path
+from tools_shared_functions import mainstem_nwm_segs, get_metadata, get_thresholds, get_datum, ngvd_to_navd_ft, get_nwm_segs, flow_data
+from dotenv import load_dotenv
+import os
+import pandas as pd
+import geopandas as gpd
+import numpy as np
 
-#Step 1: Get Threshold Water Surface Elevation (action stage + gage datum)
-#Get WSE of each stage: 
-API_BASE_URL=
+
+load_dotenv()
+#import variables from .env file
+API_BASE_URL = os.getenv("API_BASE_URL")
+EVALUATED_SITES_CSV = os.getenv("EVALUATED_SITES_CSV")
+
+
 metadata_url = f'{API_BASE_URL}/metadata'
 threshold_url = f'{API_BASE_URL}/nws_threshold'
-
-
-
 
 #Get all possible mainstem segments
 print('Getting list of mainstem segments')
@@ -68,7 +72,7 @@ fim_output_dir = Path('/Path/to/fim/output')
 workspace = Path('Path/to/workspace')
 
 
-fim_subdirs = [i for i in fim_outputs.iterdir() if i.is_dir()]
+fim_subdirs = [i for i in fim_output_dir.iterdir() if i.is_dir()]
 flood_categories = ['action','minor','moderate','major','record']
 #Loop through each folder
 for subdir in fim_subdirs:    
@@ -120,14 +124,11 @@ for subdir in fim_subdirs:
         segments = get_nwm_segs(metadata_dict)        
         site_ms_segs = set(segments).intersection(ms_segs)
         segments = list(site_ms_segs)  
-        
-        
+                
         #Write flow file
         #if no segments, write message and exit out
         if not segments:
             print(f'{lid} no segments')
-            message = f'{lid}:missing nwm segments'
-            all_messages.append(message)
             continue
         #For each flood category
         for category in flood_categories:
@@ -145,3 +146,10 @@ for subdir in fim_subdirs:
                 #Write flow file to file
                 flow_info.to_csv(output_file, index = False)                                                                                
 
+# if __name__ == '__main__':
+#     #Parse arguments
+#     parser = argparse.ArgumentParser(description = '')
+#     parser.add_argument('-s', '--source_dir', help = 'Workspace where all source data is located.', required = True)
+#     parser.add_argument('-d', '--destination',  help = 'Directory where outputs are to be stored', required = True)
+#     args = vars(parser.parse_args())
+    
