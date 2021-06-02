@@ -63,6 +63,10 @@ def get_thresh_elevs(sites):
 #Path to FIM output
 
 def create_flows(fim_output_dir, workspace):
+    
+    fim_output_dir = Path(fim_output_dir)
+    workspace = Path(workspace)
+    
     #Get all possible mainstem segments
     print('Getting list of mainstem segments')
     #Import list of evaluated sites
