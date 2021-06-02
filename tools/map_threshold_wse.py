@@ -15,6 +15,9 @@ API_BASE_URL = os.getenv("API_BASE_URL")
 EVALUATED_SITES_CSV = os.getenv("EVALUATED_SITES_CSV")
 
 
+#Declare Thresholds
+THRESHOLD_CATEGORIES = ['action','minor','moderate','major','record']
+
 metadata_url = f'{API_BASE_URL}/metadata'
 threshold_url = f'{API_BASE_URL}/nws_threshold'
 
@@ -45,14 +48,13 @@ def get_thresh_elevs(sites):
         
         #Get stages for site
         stages,flows = get_thresholds(threshold_url, select_by='nws_lid', selector=usgs.get('nws_lid'), threshold = 'all')
-        threshold_categories = ['action','minor','moderate','major']
         #Check that at least 1 threshold is valid per site
-        if not any([stages.get(threshold) for threshold in threshold_categories]):
+        if not any([stages.get(threshold) for threshold in THRESHOLD_CATEGORIES]):
             #Skipping because no threshold stages available
             continue
     
         #Convert stages to elevations
-        threshold_elevation_m = {threshold: round((stages[threshold] + datum)/3.28084,2) for threshold in threshold_categories if stages[threshold]}
+        threshold_elevation_m = {threshold: round((stages[threshold] + datum)/3.28084,2) for threshold in THRESHOLD_CATEGORIES if stages.get(threshold)}
         #Write site and thresholds/elevations to dictionary
         thresh_elevs_m_dict[usgs['usgs_site_code']] = threshold_elevation_m
     return thresh_elevs_m_dict, metadata_list
@@ -70,7 +72,7 @@ def create_flows(fim_output_dir, workspace):
     
     #Get all subdirectories in fim_output
     fim_subdirs = [i for i in fim_output_dir.iterdir() if i.is_dir()]
-    flood_categories = ['action','minor','moderate','major','record']
+
     #Loop through each folder
     for subdir in fim_subdirs:    
         print(f'Working on {subdir}')
@@ -126,7 +128,7 @@ def create_flows(fim_output_dir, workspace):
                 print(f'{lid} no segments')
                 continue
             #For each flood category
-            for category in flood_categories:
+            for category in THRESHOLD_CATEGORIES:
                 #Get the flow
                 flow = flows.get(category)
                 #If there is a valid flow value, write a flow file.
@@ -148,6 +150,7 @@ if __name__ == '__main__':
     parser.add_argument('-w', '--workspace',  help = 'Directory where outputs are to be stored', required = True)
     args = vars(parser.parse_args())
     
+    #Get flows
     create_flows(**args)
     
     
