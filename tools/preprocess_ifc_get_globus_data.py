@@ -83,7 +83,7 @@ def get_globus(BATCH_FILE):
     output, error = process.communicate()
     batch_input.close()    
     taskid = output.splitlines()[1].decode("utf-8").split(':')[1].strip()    
-    print(f'{ifc_path} assigned id: {taskid}')
+    print(f'{taskid} will retrieve {BATCH_FILE.parent.name}')
 
 
 def get_usace(usace_df):
@@ -137,8 +137,8 @@ if __name__ == '__main__':
     
     #Append files to single batch file
     print('Appending batch files...')
-    batch_files = list(WORKSPACE.rglob('batch.txt')) 
-    master_batch_file = WORKSPACE / 'all_batch.txt'
+    batch_files = list((WORKSPACE / HUC).rglob('batch.txt')) 
+    master_batch_file = WORKSPACE / HUC / 'all_batch.txt'
     with open(master_batch_file, 'w') as file:
         input_lines = fileinput.input(batch_files)
         file.writelines(input_lines)
