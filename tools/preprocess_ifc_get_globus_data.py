@@ -99,14 +99,13 @@ def get_usace(usace_df):
 if __name__ == '__main__':
     # Parse arguments
     parser = argparse.ArgumentParser(description = 'Plot and aggregate statistics for benchmark datasets (BLE/AHPS libraries)')
-    parser.add_argument('-huc','--huc', help = 'HUC to process', required = True)
+    parser.add_argument('-huc','--huc', help = 'List of HUCs to process', nargs = '+', default = [], required = True)
     # Extract to dictionary and assign to variables
     args = vars(parser.parse_args())
-    HUC = args['huc']
+    HUC_LIST = args['huc']
     
-    
-    print(f'Working on {HUC}')
-    #Get all directories 2 layers deep (hucs/reaches)
+
+    #Get all files on GLOBUS (2 layers deep (hucs/reaches))
     print('Finding files...')
     bashCommand = f"globus ls {SOURCE_EP}:/ --recursive --recursive-depth-limit 1 --jmespath DATA[*].[name,type,size] --format unix"
     process = subprocess.Popen(bashCommand.split(), stdout = subprocess.PIPE)
@@ -131,30 +130,23 @@ if __name__ == '__main__':
     ifc_df['huc8'] = ifc_df.path.str.split('/').str[0]
     huc_groups = ifc_df.groupby('huc8')
     
-    #Write Batch File
-    print('Writing batch files...')
-    write_batch_files(HUC, huc_groups)
+    #Iterate through the user specified HUCS
+    for HUC in HUC_LIST:
+        print(f"Working on HUC {HUC}")
+        #Write Batch File
+        print('Writing batch files...')
+        write_batch_files(HUC, huc_groups)
+        
+        #Append files to single batch file
+        print('Appending batch files...')
+        batch_files = list((WORKSPACE / HUC).rglob('batch.txt')) 
+        master_batch_file = WORKSPACE / HUC / 'all_batch.txt'
+        with open(master_batch_file, 'w') as file:
+            input_lines = fileinput.input(batch_files)
+            file.writelines(input_lines)
     
-    #Append files to single batch file
-    print('Appending batch files...')
-    batch_files = list((WORKSPACE / HUC).rglob('batch.txt')) 
-    master_batch_file = WORKSPACE / HUC / 'all_batch.txt'
-    with open(master_batch_file, 'w') as file:
-        input_lines = fileinput.input(batch_files)
-        file.writelines(input_lines)
+        #Fetch GLOBUS entire HUC
+        print('Fetching data...')
+        get_globus(master_batch_file)
 
-    #Fetch GLOBUS entire HUC
-    print('Fetching data...')
-    get_globus(master_batch_file)
-
-
-
-    # #Fetch GLOBUS data (Stream by Stream)
-    # batch_files = list(WORKSPACE.rglob('batch.txt'))
-    # for i, file in enumerate(batch_files):
-    #     get_globus(file)
-    #     #Every 50 requests wait 5 minutes
-    #     if i in [50, 100, 150, 200]:
-    #         time.sleep(600)
-    #         print(f'waiting, processed {i} requests')
         
