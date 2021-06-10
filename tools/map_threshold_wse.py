@@ -8,6 +8,7 @@ import pandas as pd
 import geopandas as gpd
 import numpy as np
 import argparse
+import math
 
 load_dotenv()
 #import variables from .env file
@@ -41,10 +42,15 @@ def get_thresh_elevs(sites):
         #Get datum
         datum = usgs.get('datum')
         if usgs.get('vcs') == 'NGVD29':                
+            print(f'Converting datum for {usgs.get("nws_lid")}')
             #Convert NGVD to NAVD if needed
-            #adj_ft = ngvd_to_navd_ft(datum_info = usgs, region = 'contiguous')
-            #datum = datum + adj_ft
-            continue
+            adj_ft = ngvd_to_navd_ft(datum_info = usgs, region = 'contiguous')
+            #Attempt to convert NGVD datum to NAVD
+            try:
+                datum = datum + adj_ft
+            except:
+                print(f'Error converting {usgs.get("nws_lid")} adjustment is {adj_ft}')
+                continue
         
         #Get stages for site
         stages,flows = get_thresholds(threshold_url, select_by='nws_lid', selector=usgs.get('nws_lid'), threshold = 'all')
@@ -159,7 +165,7 @@ def create_flows(fim_output_dir, workspace):
                  #Get the flow
                  flow = flows.get(threshold)
                  #If there is a valid flow value, write a flow file.
-                 if flow:
+                 if flow and not math.isnan(flow):
                      #round flow to nearest hundredth
                      flow = round(flow,2)
                      #Create the guts of the flow file.
