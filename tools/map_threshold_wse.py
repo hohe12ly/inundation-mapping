@@ -36,17 +36,17 @@ def get_thresh_elevs(sites):
     
         #Skip certain sites
         if not usgs.get('datum') or not usgs.get('usgs_site_code') or not usgs.get('nws_lid'):
-            print('skipping')
+            print(f'skipping {usgs.get("nws_lid")}')
             continue
         
         #Get datum
         datum = usgs.get('datum')
         if usgs.get('vcs') == 'NGVD29':                
             print(f'Converting datum for {usgs.get("nws_lid")}')
-            #Convert NGVD to NAVD if needed
-            adj_ft = ngvd_to_navd_ft(datum_info = usgs, region = 'contiguous')
             #Attempt to convert NGVD datum to NAVD
             try:
+                #Convert NGVD to NAVD if needed
+                adj_ft = ngvd_to_navd_ft(datum_info = usgs, region = 'contiguous')
                 datum = datum + adj_ft
             except:
                 print(f'Error converting {usgs.get("nws_lid")} adjustment is {adj_ft}')
