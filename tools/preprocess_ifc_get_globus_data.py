@@ -20,7 +20,18 @@ def write_batch_files(HUC8, groups):
         #Set paths to files/directories that need to be downloaded
         model_dir = f'{ifc_path}/Hydraulics'
         grid_dir = f'{ifc_path}/Hydraulics/Hydraulics'
-        gdb_path = f'{ifc_path}/Hydraulics/Hydraulics/Hydraulics.gdb'
+
+        #Test whether gdb or mdb are present
+
+        bashCommand = f"globus ls {SOURCE_EP}:/{grid_dir} --filter ~Hydraulics.*db --jmespath DATA[*].[name] --format unix"
+        process = subprocess.Popen(bashCommand.split(), stdout = subprocess.PIPE)
+        output, error = process.communicate()
+        db_files = output.decode("utf-8").splitlines()
+        if 'Hydraulics.mdb' in db_files:
+	        db_path = f"{grid_dir}/Hydraulics.mdb {grid_dir}/Hydraulics.mdb\n"
+        elif 'Hydraulics.gdb' in db_files:
+	        db_path = f"--recursive {grid_dir}/Hydraulics.gdb {grid_dir}/Hydraulics.gdb\n"
+
                 
         #Get models
         reach = model_dir.split('/')[-2]
@@ -56,7 +67,7 @@ def write_batch_files(HUC8, groups):
         with open(BATCH_FILE,'w') as f:
             #Geodatabase
             f.write('#Geodatabase\n')
-            f.write(f"--recursive {gdb_path} {gdb_path}\n")
+            f.write(db_path)
             #Model Files
             f.write('#Model\n')
             for model_file in model_file_names:
