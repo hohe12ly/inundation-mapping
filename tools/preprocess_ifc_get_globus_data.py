@@ -6,6 +6,7 @@ import subprocess
 import argparse
 import time
 import fileinput
+from time import localtime, strftime
 #Global variables
 SOURCE_EP = 
 DEST_EP = 
@@ -83,7 +84,9 @@ def get_globus(BATCH_FILE):
     output, error = process.communicate()
     batch_input.close()    
     taskid = output.splitlines()[1].decode("utf-8").split(':')[1].strip()    
-    print(f'{taskid} will retrieve {BATCH_FILE.parent.name}')
+    message = f'{taskid} will retrieve {BATCH_FILE.parent.name}'
+    print(message)
+    return message
 
 
 def get_usace(usace_df):
@@ -147,6 +150,7 @@ if __name__ == '__main__':
     
         #Fetch GLOBUS entire HUC
         print('Fetching data...')
-        get_globus(master_batch_file)
-
+        message = get_globus(master_batch_file)
+        with open(WORKSPACE/'globus_transfer_info.txt', 'a+') as file:
+            file.write(f'{message} transfer time: {strftime("%Y-%m-%d %H:%M:%S%p", localtime())}\n')
         

@@ -180,3 +180,104 @@ for mdb in mdbs:
         in_layer = os.path.join(mdb,'FIRM_Spatial_Layers',layer)
         out_layer = os.path.join(out_directory, gdb_name+'.gdb',layer)
         arcpy.Copy_management(in_layer,out_layer)   
+        
+        
+        
+
+
+
+
+##############################################################################
+#IFC Preprocessing
+##############################################################################
+from pathlib import Path
+import geopandas as gpd
+
+HUC_DIRECTORY = 
+WORKSPACE = 
+WORKSPACE.mkdir(parents = True, exist_ok=True)
+
+
+#Check if any mdb files are present, if so convert to gdb using arcmap
+mdb_files = list(HUC_DIRECTORY.rglob('*.mdb'))
+if len(mdb_files) >= 1:
+    print("CONVERT to GDB")
+#Otherwise get all geb files
+gdb_files = list(HUC_DIRECTORY.rglob('*.gdb'))
+all_profile = gpd.GeoDataFrame()
+for geodatabase in gdb_files:
+    #Get all profile information and append
+    profile = gpd.read_file(geodatabase, layer = 'ProfileDefinition',dtypes = {'Profile':str,'Alias':str})
+    profile['source'] = str(geodatabase)
+    all_profile = all_profile.append(profile, ignore_index = True)
+
+
+##############################################################################
+#Depth Grids Preprocessing
+##############################################################################     
+#Verify that all profiles are the same, they should be do this in FOSS
+##############################################################################
+#Depth Grids Preprocessing (ARCPRO REQUIRED)
+##############################################################################     
+#Verify that all profiles are the same, they should be do this in FOSS
+from pathlib import Path
+import arcpy
+import pandas as pd
+HUC_DIRECTORY = Path(r'Path/to/HUC/Directory')
+WORKSPACE = Path('Path/to/Workspace')
+WORKSPACE.mkdir(parents = True, exist_ok=True)
+GRIDS_DIR = WORKSPACE/'grids'
+GRIDS_DIR.mkdir(exist_ok = True)
+
+gdb_files = list(HUC_DIRECTORY.rglob('*.gdb'))
+all_profile = pd.DataFrame()
+for geodatabase in gdb_files:
+    geodatabase = geodatabase/'ProfileDefinition'
+    data = arcpy.da.TableToNumPyArray(str(geodatabase), ('Profile','Alias'))
+    profile = pd.DataFrame(data)
+    profile['source'] = str(geodatabase)
+    all_profile = all_profile.append(profile, ignore_index = True)
+events = all_profile.groupby('Profile')['Alias'].agg('unique')
+events.to_csv(GRIDS_DIR/'profiles.csv')
+events = events.to_dict()
+for profile, aliases in events.items():
+    if len(aliases) == 1:
+        events.update({profile:aliases.item()})
+        print(f'{profile} has {aliases} value only')
+
+REF_RASTER = Path(r'Path/to/raster')
+CELL_SIZE = 10
+for profile, alias in events.items():        
+    depth_grid_name = f'd{profile.lower()}'
+    #find all grids with this name
+    grids =list(HUC_DIRECTORY.rglob(f'*{depth_grid_name}*'))
+    grids = [str(arcgrid) for arcgrid in grids if arcgrid.is_dir()]
+    arcpy.management.MosaicToNewRaster(input_rasters=grids, output_location=str(GRIDS_DIR), raster_dataset_name_with_extension=f'{alias.lower()}.tif', coordinate_system_for_the_raster=str(REF_RASTER), pixel_type='32_BIT_FLOAT', cellsize=CELL_SIZE, number_of_bands=1, mosaic_method='MAXIMUM')
+    
+    
+    
+###############################################################################
+#Models Preprocessing (Copy model files)
+###############################################################################
+from pathlib import Path
+import shutil
+#Get a unique file associated with model (f01)
+flow_files = list(HUC_DIRECTORY.rglob('*.f01'))
+#Get name of model from flow file
+for file in flow_files:
+    reach = file.stem
+    #Discover and then copy all model files
+    model_dir   = file.parent
+    model_files = list(model_dir.glob(f'{reach}.*'))
+    #Make destination directory
+    dest_model_dir = WORKSPACE/'models'/reach
+    dest_model_dir.mkdir(parents = True, exist_ok = True)
+    for model_file in model_files:
+        shutil.copy(str(model_file), str(dest_model_dir/model_file.name))
+
+###############################################################################
+
+
+        
+
+
