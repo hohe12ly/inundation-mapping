@@ -182,11 +182,6 @@ for mdb in mdbs:
         arcpy.Copy_management(in_layer,out_layer)   
         
         
-        
-
-
-
-
 ##############################################################################
 #IFC Preprocessing
 ##############################################################################
@@ -277,7 +272,51 @@ for file in flow_files:
 
 ###############################################################################
 
+#Preprocess IFC data (USE_THIS)
+WORKSPACE = Path('Path/to/preprocessing_directory')
+project_files = list((WORKSPACE/'models').rglob('*.prj'))
+for project_file in project_files:
+    #Find the project file in the 'Simulations' directory
+    project_file_dir = project_file.parent
+    #from project file get the plan file extension
+    trash, plan_file_ext = get_model_info(project_file)
+    #Get the plan file specified in project file
+    plan_file = list(project_file_dir.glob(f'*.{plan_file_ext}'))
+    #If plan file exists then get the flow file
+    if plan_file:
+        [plan_file] = plan_file
+        trash, flow_file_ext= get_model_files(plan_file)
+        [flow_file] = list(project_file_dir.glob(f'*.{flow_file_ext}'))
+    #If the plan file does not exist, find the plan file that is present in directory (assumes 1) and get the flow file specified in that plan file.
+    else:
+        print(f'using available plan file {project_file_dir}')
+        [plan_file] = list(project_file_dir.glob(f'*.p0*'))
+        trash, flow_file_ext= get_model_files(plan_file)
+        [flow_file] = list(project_file_dir.glob(f'*.{flow_file_ext}'))
+    
+    #Define model source (usace or ifc)
+    source = 'ifc'
+    spatial_dir = WORKSPACE/'spatial'/project_file.parent.name 
+    geodatabase = spatial_dir/'Hydraulics.gdb'
+    #Create XS/River shapefiles
+    assign_xs_flows(source, flow_file, project_file, geodatabase, spatial_dir)
+    get_river(source, geodatabase,spatial_dir)
 
+#Concatenate XS/River Shapefiles
+xs_files = list(WORKSPACE.rglob('*_xs.shp'))
+all_xs = gpd.GeoDataFrame()
+for xs in xs_files:
+    temp = gpd.read_file(xs)
+    all_xs = all_xs.append(temp)
+
+river_files = list(WORKSPACE.rglob('*_river.shp'))
+all_river = gpd.GeoDataFrame()
+for river in river_files:
+    temp = gpd.read_file(river)
+    all_river = all_river.append(temp)
+
+all_xs.to_file(WORKSPACE/'spatial'/'xs.shp')
+all_river.to_file(WORKSPACE/'spatial'/'river.shp')
         
 
 
