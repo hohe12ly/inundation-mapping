@@ -139,7 +139,7 @@ def write_ifc_flow_file(ifc_xs_layer, nwm_geodatabase):
         forecast['discharge'] = forecast['discharge'] * dischargeMultiplier
     
         #Set paths and write file
-        output_dir = WORKSPACE/'benchmark'/return_period[i]
+        output_dir = WORKSPACE/f'{huc}_ifc'/return_period[i]
         output_dir.mkdir(parents = True, exist_ok = True)
         forecast.to_csv(output_dir /f"ble_huc_{huc}_flows_{return_period[i]}.csv" ,index=False) 
     
@@ -429,8 +429,8 @@ flow_dict = dict(zip(flow_fields, return_intervals))
 for raster in benchmark_rasters:
     event = raster.stem
     return_period = flow_dict[event]
-    
-    output_path = WORKSPACE/'benchmark'/return_period/f'ble_huc_{huc}_extent_{return_period}.tif'
+    huc = raster.parent.parent.name
+    output_path = WORKSPACE/f'{huc}_ifc'/return_period/f'ble_huc_{huc}_extent_{return_period}.tif'
     output_path.parent.mkdir(parents = True, exist_ok = True)    
 
     preprocess_benchmark_static(raster, REF_RASTER, out_raster_path = output_path)
