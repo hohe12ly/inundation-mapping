@@ -139,9 +139,9 @@ def write_ifc_flow_file(ifc_xs_layer, nwm_geodatabase):
         forecast['discharge'] = forecast['discharge'] * dischargeMultiplier
     
         #Set paths and write file
-        output_dir = WORKSPACE/f'{huc}_ifc'/return_period[i]
+        output_dir = WORKSPACE/f'validation_{huc}'/return_period[i]
         output_dir.mkdir(parents = True, exist_ok = True)
-        forecast.to_csv(output_dir /f"ble_huc_{huc}_flows_{return_period[i]}.csv" ,index=False) 
+        forecast.to_csv(output_dir /f"ifc_huc_{huc}_flows_{return_period[i]}.csv" ,index=False) 
     
     
 def get_hec_ras_flows(flow_file):
@@ -295,11 +295,24 @@ if mdbs:
         gdb_name = os.path.splitext(os.path.basename(mdb))[0]
         arcpy.CreateFileGDB_management(out_folder_path=out_directory, out_name=gdb_name, out_version="CURRENT")
         #Copy mdb layers from mdb to gdb
-        spatial_layers = ['S_Fld_Haz_Ar','S_Profil_Basln','S_XS']
-        for layer in spatial_layers:
-            in_layer = os.path.join(mdb,'FIRM_Spatial_Layers',layer)
-            out_layer = os.path.join(out_directory, gdb_name+'.gdb',layer)
-            arcpy.Copy_management(in_layer,out_layer)
+        arcpy.env.workspace = mdb
+        #Get dataset names
+        layers = []
+        datasets = arcpy.ListDatasets(feature_type='feature')
+        datasets = [''] + datasets if datasets is not None else []
+        for ds in datasets:
+            for fc in arcpy.ListFeatureClasses(feature_dataset=ds):
+                path = os.path.join(arcpy.env.workspace, ds, fc)
+                layers.append(path)
+        # Get tables
+        tables = arcpy.ListTables()
+        for table in tables:
+            path = os.path.join(arcpy.env.workspace, table)
+            layers.append(path)
+        #spatial_layers = ['S_Fld_Haz_Ar','S_Profil_Basln','S_XS']
+        for layer in layers:
+            out_layer = os.path.join(out_directory, gdb_name+'.gdb',os.path.basename(layer))
+            arcpy.Copy_management(layer,out_layer)
     '''
     print(message.format(str(HUC_DIRECTORY)))
 
@@ -332,6 +345,8 @@ for file in flow_files:
 #Get profile names associated with depth grid names
 import arcpy
 from pathlib import Path
+import pandas as pd
+
 WORKSPACE = Path('Path/to/workspace')
 GRIDS_DIR = WORKSPACE/'grids'
 HUC_DIRECTORY=Path('Path/to/source/data')
@@ -351,7 +366,7 @@ for profile, aliases in events.items():
         events.update({profile:aliases.item()})
         print(f'{profile} has {aliases} value only')
 #Assuming the aliases are consistent throughout a HUC, preprocess GRIDS
-REF_RASTER = Path(r'D:\ifc\ref_ras.tif') #Or path to reference raster
+REF_RASTER = Path(r'Path/to/Ref/Raster') #Or path to reference raster
 CELL_SIZE = 10
 CRS = arcpy.Describe (str(REF_RASTER)).spatialReference
 for profile, alias in events.items():        
@@ -427,10 +442,19 @@ flow_fields = ['DSCH_50PCT','DSCH_20PCT','DSCH_10PCT','DSCH_4PCT','DSCH_2PCT','D
 return_intervals = ['2yr','5yr','10yr','25yr','50yr','100yr','200yr','500yr']
 flow_dict = dict(zip(flow_fields, return_intervals))
 for raster in benchmark_rasters:
-    event = raster.stem
+    event = raster.stem.upper()
     return_period = flow_dict[event]
     huc = raster.parent.parent.name
-    output_path = WORKSPACE/f'{huc}_ifc'/return_period/f'ble_huc_{huc}_extent_{return_period}.tif'
+    output_path = WORKSPACE/f'validation_{huc}'/return_period/f'ifc_huc_{huc}_extent_{return_period}.tif'
     output_path.parent.mkdir(parents = True, exist_ok = True)    
 
     preprocess_benchmark_static(raster, REF_RASTER, out_raster_path = output_path)
+    
+#7. Get all preprocessed data in format for uploading to VM
+################################################################################
+validation_folders = list(WORKSPACE.parent.rglob('validation_*'))
+for folder in validation_folders:
+    dest_dir = WORKSPACE.parent/'all_validation'
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest_fold = str(folder.stem).split('_')[1]
+    shutil.copytree(folder, dest_dir/dest_fold )  
