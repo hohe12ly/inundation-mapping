@@ -348,8 +348,9 @@ from pathlib import Path
 import pandas as pd
 
 WORKSPACE = Path('Path/to/workspace')
-GRIDS_DIR = WORKSPACE/'grids'
 HUC_DIRECTORY=Path('Path/to/source/data')
+GRIDS_DIR = WORKSPACE/'grids'
+GRIDS_DIR.mkdir(parents = True, exist_ok = True)
 gdb_files = list(WORKSPACE.rglob('*.gdb'))
 all_profile = pd.DataFrame()
 for geodatabase in gdb_files:
