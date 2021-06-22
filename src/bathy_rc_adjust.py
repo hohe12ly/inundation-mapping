@@ -131,7 +131,7 @@ def bathy_rc_lookup(input_src_base,input_bathy_fileName,output_bathy_fileName,ou
         modified_src_base['HydraulicRadius (m)_bathy_adj'] = modified_src_base['WetArea (m2)_bathy_adj']/modified_src_base['WettedPerimeter (m)']
         modified_src_base['HydraulicRadius (m)_bathy_adj'].fillna(0, inplace=True)
         ## mask out negative top width differences (avoid thalweg burn notch)
-        modified_src_base['HydraulicRadius (m)_bathy_adj'].mask((modified_src_base['HydraulicRadius (m)_bathy_adj']>thal_hyd_radius_flag) & (modified_src_base['Stage']<thal_stg_limit),0,inplace=True)
+        #modified_src_base['HydraulicRadius (m)_bathy_adj'].mask((modified_src_base['HydraulicRadius (m)_bathy_adj']>thal_hyd_radius_flag) & (modified_src_base['Stage']<thal_stg_limit),0,inplace=True)
 
         ## Calculate Q using Manning's equation
         modified_src_base['Discharge (m3s-1)'] = modified_src_base['WetArea (m2)_bathy_adj']* \
