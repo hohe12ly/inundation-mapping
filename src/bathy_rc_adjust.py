@@ -9,7 +9,6 @@ sa_ratio_flag             = float(environ['surf_area_thalweg_ratio_flag']) #10x
 thal_stg_limit            = float(environ['thalweg_stg_search_max_limit']) #3m
 bankful_xs_ratio_flag     = float(environ['bankful_xs_area_ratio_flag']) #10x
 bathy_xsarea_flag         = float(environ['bathy_xs_area_chg_flag']) #1x
-thal_hyd_radius_flag      = float(environ['thalweg_hyd_radius_flag']) #10x
 
 def bathy_rc_lookup(input_src_base,input_bathy_fileName,output_bathy_fileName,output_bathy_streamorder_fileName,output_bathy_thalweg_fileName,output_bathy_xs_lookup_fileName,):
     ## Convert input_src_base featureid to integer
@@ -130,8 +129,6 @@ def bathy_rc_lookup(input_src_base,input_bathy_fileName,output_bathy_fileName,ou
         modified_src_base['WetArea (m2)_bathy_adj'] = modified_src_base['Volume (m3)_bathy_adj']/modified_src_base['LENGTHKM']/1000
         modified_src_base['HydraulicRadius (m)_bathy_adj'] = modified_src_base['WetArea (m2)_bathy_adj']/modified_src_base['WettedPerimeter (m)']
         modified_src_base['HydraulicRadius (m)_bathy_adj'].fillna(0, inplace=True)
-        ## mask out negative top width differences (avoid thalweg burn notch)
-        #modified_src_base['HydraulicRadius (m)_bathy_adj'].mask((modified_src_base['HydraulicRadius (m)_bathy_adj']>thal_hyd_radius_flag) & (modified_src_base['Stage']<thal_stg_limit),0,inplace=True)
 
         ## Calculate Q using Manning's equation
         modified_src_base['Discharge (m3s-1)'] = modified_src_base['WetArea (m2)_bathy_adj']* \
