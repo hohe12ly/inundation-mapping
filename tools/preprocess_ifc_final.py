@@ -89,9 +89,9 @@ def preprocess_benchmark_static(benchmark_raster, reference_raster, out_raster_p
                 dst.write(boolean_benchmark.astype('int8'),1)   
     return boolean_benchmark.astype('int8'), profile
 
-def write_ifc_flow_file(ifc_xs_layer, nwm_geodatabase):
+def write_ifc_flow_file(ifc_xs_layer, nwm_gpkg):
     #Change these if needed
-    nwm_stream_layer_name = 'RouteLink_FL'
+    #nwm_stream_layer_name = 'RouteLink_FL'
     nwm_feature_id_field ='ID'
         
     #Search for the layer that has 'XS' in the ble geodatabase. There should be only one and this is the 1D XS used in modeling. Read the layer into a geopandas dataframe.
@@ -105,9 +105,9 @@ def write_ifc_flow_file(ifc_xs_layer, nwm_geodatabase):
         #Convert from CFS to CMS
         dischargeMultiplier = 0.3048 ** 3
     
-    #Search for the layer that has nwm_stream_layer_name (default 'RouteLink_FL' from NWMv2.1) in the nwm geodatabase. Read in this layer using the bounding box option based on the extents of the BLE XS layer. According to geopandas documentation, "CRS mis-matches are resolved if given a GeoSeries or GeoDataFrame." The NWM layer is read in as a geopandas dataframe. 
-    [nwm_layer_name] = [i for i in fiona.listlayers(nwm_geodatabase) if nwm_stream_layer_name in i]
-    nwm_river_layer = gpd.read_file(nwm_geodatabase, bbox = xs_layer, layer = nwm_layer_name)
+    #Read in nwm geopackage layer
+    #[nwm_layer_name] = [i for i in fiona.listlayers(nwm_geodatabase) if nwm_stream_layer_name in i]
+    nwm_river_layer = gpd.read_file(nwm_gpkg)
     
     #make sure xs_layer is in same projection as nwm_river_layer.
     xs_layer_proj = xs_layer.to_crs(nwm_river_layer.crs)
@@ -458,4 +458,4 @@ for folder in validation_folders:
     dest_dir = WORKSPACE.parent/'all_validation'
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest_fold = str(folder.stem).split('_')[1]
-    shutil.copytree(folder, dest_dir/dest_fold )  
+    shutil.copytree(folder, dest_dir/dest_fold)  
