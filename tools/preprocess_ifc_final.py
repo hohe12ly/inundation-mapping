@@ -9,21 +9,15 @@ from pathlib import Path
 import re
 import pandas as pd
 import geopandas as gpd
-import os
-import fiona
-import argparse
 import rasterio
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 import rasterio.mask
 import numpy as np
 
 
-HUC_DIRECTORY
-WORKSPACE
-PREP_PROJECTION = 'PROJCS["USA_Contiguous_Albers_Equal_Area_Conic_USGS_version",GEOGCS["NAD83",DATUM["North_American_Datum_1983",SPHEROID["GRS 1980",6378137,298.2572221010042,AUTHORITY["EPSG","7019"]],AUTHORITY["EPSG","6269"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433],AUTHORITY["EPSG","4269"]],PROJECTION["Albers_Conic_Equal_Area"],PARAMETER["standard_parallel_1",29.5],PARAMETER["standard_parallel_2",45.5],PARAMETER["latitude_of_center",23],PARAMETER["longitude_of_center",-96],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]]]'
-
-
-
+###############################################################################
+#Functions needed for preprocessing
+##############################################################################
 def preprocess_benchmark_static(benchmark_raster, reference_raster, out_raster_path = None):
     '''
     This function will preprocess a benchmark dataset for purposes of evaluating FIM output. A benchmark dataset will be transformed using properties (CRS, resolution) from an input reference dataset. The benchmark raster will also be converted to a boolean (True/False) raster with inundated areas (True or 1) and dry areas (False or 0). 
@@ -88,7 +82,6 @@ def preprocess_benchmark_static(benchmark_raster, reference_raster, out_raster_p
             with rasterio.open(out_raster_path, 'w', **profile) as dst:
                 dst.write(boolean_benchmark.astype('int8'),1)   
     return boolean_benchmark.astype('int8'), profile
-
 def write_ifc_flow_file(ifc_xs_layer, nwm_gpkg):
     #Change these if needed
     #nwm_stream_layer_name = 'RouteLink_FL'
@@ -141,9 +134,7 @@ def write_ifc_flow_file(ifc_xs_layer, nwm_gpkg):
         #Set paths and write file
         output_dir = WORKSPACE/f'validation_{huc}'/return_period[i]
         output_dir.mkdir(parents = True, exist_ok = True)
-        forecast.to_csv(output_dir /f"ifc_huc_{huc}_flows_{return_period[i]}.csv" ,index=False) 
-    
-    
+        forecast.to_csv(output_dir /f"ifc_huc_{huc}_flows_{return_period[i]}.csv" ,index=False)  
 def get_hec_ras_flows(flow_file):
     '''
     Retrieves flows from HEC-RAS flow file.
@@ -203,7 +194,6 @@ def get_hec_ras_flows(flow_file):
                 #Append flow information
                 all_flows = all_flows.append(flow_df, ignore_index = True)
     return all_flows
-
 def get_model_info(project_file):
     file = Path(project_file)
     with open(file) as f:
@@ -276,7 +266,21 @@ def assign_xs_flows(source, flow_file, project_file, geodatabase, workspace):
     joined.to_file(workspace / f'{stem}_xs.shp')
 ###############################################################################
 ###############################################################################
-#Step 1: Find all mdb and convert to gdb
+###############################################################################
+###############################################################################
+
+#Instructions for pre-processing IFC data. This process requires babysitting and 
+#as such it preprocessing is done one huc at a time. Use 7zip to unzip the tar.gz file. 
+#Once this is finished update these variables.
+
+HUC_DIRECTORY = Path('/path/to/unzipped/tar.gz/directory') #This is the path to the unzipped tar.gz file
+WORKSPACE = Path('/path/to/the/preprocessed/parent/directory/<huc>') #This is the path to the parent directory where preprocessed data will go. It is the HUC name. Other subdirectories will be added.
+PREP_PROJECTION = 'PROJCS["USA_Contiguous_Albers_Equal_Area_Conic_USGS_version",GEOGCS["NAD83",DATUM["North_American_Datum_1983",SPHEROID["GRS 1980",6378137,298.2572221010042,AUTHORITY["EPSG","7019"]],AUTHORITY["EPSG","6269"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433],AUTHORITY["EPSG","4269"]],PROJECTION["Albers_Conic_Equal_Area"],PARAMETER["standard_parallel_1",29.5],PARAMETER["standard_parallel_2",45.5],PARAMETER["latitude_of_center",23],PARAMETER["longitude_of_center",-96],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]]]'
+nwm_gpkg = '/path/to/fim/nwm_flows.gpkg'
+###############################################################################
+
+#Step 1: Find all mdb and convert to gdb. If mdb's present copy print statement 
+#into arcmap to convert mdb to gdb. Once finished, close arcmap to remove lock files.
 ###############################################################################
 mdbs = list(HUC_DIRECTORY.rglob("*.mdb"))
 if mdbs:
@@ -340,9 +344,8 @@ for file in flow_files:
     for model_file in model_files:
         shutil.copy(str(model_file), str(dest_model_dir/model_file.name))
 
-#Step 4: Copy Grids and process (DO THIS IN ARCPRO)
+#Step 4: Preprocess depth grids. Copy this section into ArcPro
 ###############################################################################
-#Get profile names associated with depth grid names
 import arcpy
 from pathlib import Path
 import pandas as pd
@@ -366,6 +369,8 @@ for profile, aliases in events.items():
     if len(aliases) == 1:
         events.update({profile:aliases.item()})
         print(f'{profile} has {aliases} value only')
+    else:
+        events.update({profile:aliases[0]})
 #Assuming the aliases are consistent throughout a HUC, preprocess GRIDS
 REF_RASTER = Path(r'Path/to/Ref/Raster') #Or path to reference raster
 CELL_SIZE = 10
@@ -377,10 +382,8 @@ for profile, alias in events.items():
     grids = [str(arcgrid) for arcgrid in grids if arcgrid.is_dir()]
     arcpy.management.MosaicToNewRaster(input_rasters=grids, output_location=str(GRIDS_DIR), raster_dataset_name_with_extension=f'{alias.lower()}.tif', coordinate_system_for_the_raster=CRS, pixel_type='32_BIT_FLOAT', cellsize=CELL_SIZE, number_of_bands=1, mosaic_method='MAXIMUM')
 
-#Step 5: Get XS (populated with flows) and rivers.
-###############################################################################
-#Preprocess IFC data (USE_THIS)
-
+#Step 5: Populate XS layer with flows from HEC-RAS model, also export rivers. 
+##############################################################################
 project_files = list((WORKSPACE/'models').rglob('*.prj'))
 for project_file in project_files:
     project_file_dir = project_file.parent
@@ -430,8 +433,7 @@ all_river.to_file(WORKSPACE/'spatial'/'river.shp')
 #Write Flow Files
 ###############################################################################
 ifc_xs_layer =  WORKSPACE/'spatial'/'xs.shp'
-nwm_geodatabase = 
-write_ifc_flow_file(ifc_xs_layer, nwm_geodatabase)
+write_ifc_flow_file(ifc_xs_layer, nwm_gpkg)
 
 ###############################################################################
 #Preprocess Benchmark Grids
@@ -450,7 +452,8 @@ for raster in benchmark_rasters:
     output_path.parent.mkdir(parents = True, exist_ok = True)    
 
     preprocess_benchmark_static(raster, REF_RASTER, out_raster_path = output_path)
-    
+
+#Once all preprocessing is finished, Step 7 copies the evaluation data into one folder.   
 #7. Get all preprocessed data in format for uploading to VM
 ################################################################################
 validation_folders = list(WORKSPACE.parent.rglob('validation_*'))
