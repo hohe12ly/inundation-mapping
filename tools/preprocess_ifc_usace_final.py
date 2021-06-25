@@ -132,7 +132,7 @@ def write_ifc_flow_file(ifc_xs_layer, nwm_gpkg):
         forecast['discharge'] = forecast['discharge'] * dischargeMultiplier
     
         #Set paths and write file
-        output_dir = WORKSPACE/f'validation_{huc}'/return_period[i]
+        output_dir = USACE_WORKSPACE/f'validation_{huc}'/return_period[i]
         output_dir.mkdir(parents = True, exist_ok = True)
         forecast.to_csv(output_dir /f"ifc_huc_{huc}_flows_{return_period[i]}.csv" ,index=False)  
 def get_hec_ras_flows(flow_file):
@@ -273,8 +273,8 @@ def assign_xs_flows(source, flow_file, project_file, geodatabase, workspace):
 #as such it preprocessing is done one huc at a time. Use 7zip to unzip the tar.gz file. 
 #Once this is finished update these variables.
 
-HUC_DIRECTORY = Path('/path/to/unzipped/tar.gz/directory') #This is the path to the unzipped tar.gz file
-WORKSPACE = Path('/path/to/the/preprocessed/parent/directory/<huc>') #This is the path to the parent directory where preprocessed data will go. It is the HUC name. Other subdirectories will be added.
+USACE_USACE_HUC_DIRECTORY = Path('/path/to/unzipped/tar.gz/directory') #This is the path to the unzipped tar.gz file
+USACE_WORKSPACE = Path('/path/to/the/preprocessed/parent/directory/<huc>') #This is the path to the parent directory where preprocessed data will go. It is the HUC name. Other subdirectories will be added.
 PREP_PROJECTION = 'PROJCS["USA_Contiguous_Albers_Equal_Area_Conic_USGS_version",GEOGCS["NAD83",DATUM["North_American_Datum_1983",SPHEROID["GRS 1980",6378137,298.2572221010042,AUTHORITY["EPSG","7019"]],AUTHORITY["EPSG","6269"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433],AUTHORITY["EPSG","4269"]],PROJECTION["Albers_Conic_Equal_Area"],PARAMETER["standard_parallel_1",29.5],PARAMETER["standard_parallel_2",45.5],PARAMETER["latitude_of_center",23],PARAMETER["longitude_of_center",-96],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]]]'
 nwm_gpkg = '/path/to/fim/nwm_flows.gpkg'
 ###############################################################################
@@ -282,56 +282,54 @@ nwm_gpkg = '/path/to/fim/nwm_flows.gpkg'
 #Step 1: Find all mdb and convert to gdb. If mdb's present copy print statement 
 #into arcmap to convert mdb to gdb. Once finished, close arcmap to remove lock files.
 ###############################################################################
-mdbs = list(HUC_DIRECTORY.rglob("*.mdb"))
-if mdbs:
-    print('Use ARCMAP TO CONVERT MDB TO GDB FIRST!')
-    #USE ARCMAP TO CONVERT   
-    message = '''
-    #Paste this script in ARCMAP(NOT ARCPRO)
-    import os
-    import arcpy
-    PATH = r'{0}'
-    mdbs = [os.path.join(dp, f) for dp, dn, filenames in os.walk(PATH) for f in filenames if os.path.splitext(f)[1] == '.mdb']
-    for mdb in mdbs:
-        print(mdb)
-        #Write geodatabase
-        out_directory = os.path.dirname(mdb)
-        gdb_name = os.path.splitext(os.path.basename(mdb))[0]
-        arcpy.CreateFileGDB_management(out_folder_path=out_directory, out_name=gdb_name, out_version="CURRENT")
-        #Copy mdb layers from mdb to gdb
-        arcpy.env.workspace = mdb
-        #Get dataset names
-        layers = []
-        datasets = arcpy.ListDatasets(feature_type='feature')
-        datasets = [''] + datasets if datasets is not None else []
-        for ds in datasets:
-            for fc in arcpy.ListFeatureClasses(feature_dataset=ds):
-                path = os.path.join(arcpy.env.workspace, ds, fc)
-                layers.append(path)
-        # Get tables
-        tables = arcpy.ListTables()
-        for table in tables:
-            path = os.path.join(arcpy.env.workspace, table)
+mdbs = list(USACE_HUC_DIRECTORY.rglob("*.mdb"))
+mdbs = [i for i in mdbs if 'Spatial_Files' in str(i)] #Remove intermediate mdbs in USACE data.
+#USE ARCMAP TO CONVERT   
+message = '''
+#Paste this script in ARCMAP(NOT ARCPRO)
+import os
+import arcpy
+PATH = r'{0}'
+mdbs = [os.path.join(dp, f) for dp, dn, filenames in os.walk(PATH) for f in filenames if os.path.splitext(f)[1] == '.mdb']
+for mdb in mdbs:
+    print(mdb)
+    #Write geodatabase
+    out_directory = os.path.dirname(mdb)
+    gdb_name = os.path.splitext(os.path.basename(mdb))[0]
+    arcpy.CreateFileGDB_management(out_folder_path=out_directory, out_name=gdb_name, out_version="CURRENT")
+    #Copy mdb layers from mdb to gdb
+    arcpy.env.workspace = mdb
+    #Get dataset names
+    layers = []
+    datasets = arcpy.ListDatasets(feature_type='feature')
+    datasets = [''] + datasets if datasets is not None else []
+    for ds in datasets:
+        for fc in arcpy.ListFeatureClasses(feature_dataset=ds):
+            path = os.path.join(arcpy.env.workspace, ds, fc)
             layers.append(path)
-        #spatial_layers = ['S_Fld_Haz_Ar','S_Profil_Basln','S_XS']
-        for layer in layers:
-            out_layer = os.path.join(out_directory, gdb_name+'.gdb',os.path.basename(layer))
-            arcpy.Copy_management(layer,out_layer)
-    '''
-    print(message.format(str(HUC_DIRECTORY)))
-
+    # Get tables
+    tables = arcpy.ListTables()
+    for table in tables:
+        path = os.path.join(arcpy.env.workspace, table)
+        layers.append(path)
+    for layer in layers:
+        out_layer = os.path.join(out_directory, gdb_name+'.gdb',os.path.basename(layer))
+        arcpy.Copy_management(layer,out_layer)
+'''
+if mdbs:
+   print(message.format(str(USACE_HUC_DIRECTORY))) 
 #Step 2: Copy all gdb files to preprocess directory
 ###############################################################################
-gdb_files = list(HUC_DIRECTORY.rglob('*.gdb'))
+gdb_files = list(USACE_HUC_DIRECTORY.rglob('*.gdb'))
 for gdb in gdb_files:
-    dest = WORKSPACE/'spatial'/gdb.parent.parent.parent.name
+    dest = USACE_WORKSPACE/'spatial'/gdb.parent.parent.parent.name
     dest.mkdir(parents=True, exist_ok = True)
     shutil.copytree(gdb, dest/gdb.name)
 
 #Step 3: Copy models to preprocess directory
 ##############################################################################
 #Get a unique file associated with model (f01)
-flow_files = list(HUC_DIRECTORY.rglob('*.f0*'))
+flow_files = list(USACE_HUC_DIRECTORY.rglob('*.f0*'))
 #Copy model files
 for file in flow_files:
     reach = file.stem
@@ -339,52 +337,44 @@ for file in flow_files:
     model_dir   = file.parent
     model_files = list(model_dir.glob(f'{reach}.*'))
     #Make destination director
-    dest_model_dir = WORKSPACE/'models'/reach
+    dest_model_dir = USACE_WORKSPACE/'models'/reach
     dest_model_dir.mkdir(parents = True, exist_ok = True)
     for model_file in model_files:
         shutil.copy(str(model_file), str(dest_model_dir/model_file.name))
 
-#Step 4: Preprocess depth grids. Copy this section into ArcPro
+#Step 4: Merge flood polygons and convert to raster
 ###############################################################################
 import arcpy
 from pathlib import Path
 import pandas as pd
-
-WORKSPACE = Path('Path/to/workspace')
-HUC_DIRECTORY=Path('Path/to/source/data')
-GRIDS_DIR = WORKSPACE/'grids'
+GRIDS_DIR = USACE_WORKSPACE/'grids'
 GRIDS_DIR.mkdir(parents = True, exist_ok = True)
-gdb_files = list(WORKSPACE.rglob('*.gdb'))
-all_profile = pd.DataFrame()
-for geodatabase in gdb_files:
-    geodatabase = geodatabase/'ProfileDefinition'
-    data = arcpy.da.TableToNumPyArray(str(geodatabase), ('Profile','Alias'))
-    profile = pd.DataFrame(data)
-    profile['source'] = str(geodatabase)
-    all_profile = all_profile.append(profile, ignore_index = True)
-events = all_profile.groupby('Profile')['Alias'].agg('unique')
-events.to_csv(GRIDS_DIR/'profiles.csv')
-events = events.to_dict()
-for profile, aliases in events.items():
-    if len(aliases) == 1:
-        events.update({profile:aliases.item()})
-        print(f'{profile} has {aliases} value only')
-    else:
-        events.update({profile:aliases[0]})
-#Assuming the aliases are consistent throughout a HUC, preprocess GRIDS
+all_gdf = gpd.GeoDataFrame()
+for gdb in gdb_files:
+    gdf = gpd.read_file(gdb, layer = 'S_FLD_HAZ_AR')
+    all_gdf = all_gdf.append(gdf)
+events = all_gdb.FLD_ZONE.unique()
+for event in events:
+    poly = all_gdb.query(f'FLD_ZONE == "{event}"')
+    dissolved = poly.dissolve(by = 'FLD_ZONE')
+    dissolved.to_file(GRIDS_DIR / f"{event.replace(' ','_').lower()}.shp")
+
+#Arcpro
+#vector to raster (feature to raster)
+
 REF_RASTER = Path(r'Path/to/Ref/Raster') #Or path to reference raster
 CELL_SIZE = 10
 CRS = arcpy.Describe (str(REF_RASTER)).spatialReference
 for profile, alias in events.items():        
     depth_grid_name = f'd{profile.lower()}'
     #find all grids with this name
-    grids =list(HUC_DIRECTORY.rglob(f'*{depth_grid_name}*'))
+    grids =list(USACE_HUC_DIRECTORY.rglob(f'*{depth_grid_name}*'))
     grids = [str(arcgrid) for arcgrid in grids if arcgrid.is_dir()]
     arcpy.management.MosaicToNewRaster(input_rasters=grids, output_location=str(GRIDS_DIR), raster_dataset_name_with_extension=f'{alias.lower()}.tif', coordinate_system_for_the_raster=CRS, pixel_type='32_BIT_FLOAT', cellsize=CELL_SIZE, number_of_bands=1, mosaic_method='MAXIMUM')
 
 #Step 5: Populate XS layer with flows from HEC-RAS model, also export rivers. 
 ##############################################################################
-project_files = list((WORKSPACE/'models').rglob('*.prj'))
+project_files = list((USACE_WORKSPACE/'models').rglob('*.prj'))
 for project_file in project_files:
     project_file_dir = project_file.parent
     #from project file get the plan file extension
@@ -404,41 +394,41 @@ for project_file in project_files:
         [flow_file] = list(project_file_dir.glob(f'*.{flow_file_ext}'))
     
     #Define model source (usace or ifc)
-    source = 'ifc'
-    spatial_dir = WORKSPACE/'spatial'/project_file.parent.name 
-    geodatabase = spatial_dir/'Hydraulics.gdb'
+    source = 'usace'
+    spatial_dir = USACE_WORKSPACE/'spatial'/project_file.parent.name 
+    [geodatabase] = list(spatial_dir.glob('*.gdb'))
     #Create XS/River shapefiles
     assign_xs_flows(source, flow_file, project_file, geodatabase, spatial_dir)
     get_river(source, geodatabase,spatial_dir)
 
 #Concatenate XS/River Shapefiles
-xs_files = list(WORKSPACE.rglob('*_xs.shp'))
+xs_files = list(USACE_WORKSPACE.rglob('*_xs.shp'))
 all_xs = gpd.GeoDataFrame()
 for xs in xs_files:
     temp = gpd.read_file(xs)
     all_xs = all_xs.append(temp)
 
-river_files = list(WORKSPACE.rglob('*_river.shp'))
+river_files = list(USACE_WORKSPACE.rglob('*_river.shp'))
 all_river = gpd.GeoDataFrame()
 for river in river_files:
     temp = gpd.read_file(river)
     all_river = all_river.append(temp)
 
-all_xs.to_file(WORKSPACE/'spatial'/'xs.shp')
-all_river.to_file(WORKSPACE/'spatial'/'river.shp')   
+all_xs.to_file(USACE_WORKSPACE/'spatial'/'xs.shp')
+all_river.to_file(USACE_WORKSPACE/'spatial'/'river.shp')   
 
 #6. Process grids and write flow files
 ##############################################################################
 ##############################################################################
 #Write Flow Files
 ###############################################################################
-ifc_xs_layer =  WORKSPACE/'spatial'/'xs.shp'
+ifc_xs_layer =  USACE_WORKSPACE/'spatial'/'xs.shp'
 write_ifc_flow_file(ifc_xs_layer, nwm_gpkg)
 
 ###############################################################################
 #Preprocess Benchmark Grids
 ###############################################################################
-benchmark_rasters = list(WORKSPACE.rglob('*.tif'))
+benchmark_rasters = list(USACE_WORKSPACE.rglob('*.tif'))
 #define fields containing flow (typically these won't change for BLE)
 flow_fields = ['DSCH_50PCT','DSCH_20PCT','DSCH_10PCT','DSCH_4PCT','DSCH_2PCT','DSCH_1PCT','DSCH_05PCT','DSCH_02PCT']
 #define return period associated with flow_fields (in same order as flow_fields). These will also serve as subdirectory names.
@@ -448,7 +438,7 @@ for raster in benchmark_rasters:
     event = raster.stem.upper()
     return_period = flow_dict[event]
     huc = raster.parent.parent.name
-    output_path = WORKSPACE/f'validation_{huc}'/return_period/f'ifc_huc_{huc}_extent_{return_period}.tif'
+    output_path = USACE_WORKSPACE/f'validation_{huc}'/return_period/f'ifc_huc_{huc}_extent_{return_period}.tif'
     output_path.parent.mkdir(parents = True, exist_ok = True)    
 
     preprocess_benchmark_static(raster, REF_RASTER, out_raster_path = output_path)
@@ -456,9 +446,9 @@ for raster in benchmark_rasters:
 #Once all preprocessing is finished, Step 7 copies the evaluation data into one folder.   
 #7. Get all preprocessed data in format for uploading to VM
 ################################################################################
-validation_folders = list(WORKSPACE.parent.rglob('validation_*'))
+validation_folders = list(USACE_WORKSPACE.parent.rglob('validation_*'))
 for folder in validation_folders:
-    dest_dir = WORKSPACE.parent/'all_validation'
+    dest_dir = USACE_WORKSPACE.parent/'all_validation'
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest_fold = str(folder.stem).split('_')[1]
     shutil.copytree(folder, dest_dir/dest_fold)  
