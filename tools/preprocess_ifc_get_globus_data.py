@@ -7,10 +7,11 @@ import argparse
 import time
 import fileinput
 from time import localtime, strftime
+
 #Global variables
 SOURCE_EP = 
 DEST_EP = 
-WORKSPACE = 
+WORKSPACE = Path('/Path/to/workspace')
 
 def write_batch_files(HUC8, groups):
     #Create HUC8 column (so we download by HUC8) and then group by huc8
@@ -20,7 +21,7 @@ def write_batch_files(HUC8, groups):
         #Set paths to files/directories that need to be downloaded
         model_dir = f'{ifc_path}/Hydraulics'
         grid_dir = f'{ifc_path}/Hydraulics/Hydraulics'
-
+        
         #Test whether gdb or mdb are present
 
         bashCommand = f"globus ls {SOURCE_EP}:/{grid_dir} --filter ~Hydraulics.*db --jmespath DATA[*].[name] --format unix"
@@ -31,8 +32,7 @@ def write_batch_files(HUC8, groups):
 	        db_path = f"{grid_dir}/Hydraulics.mdb {grid_dir}/Hydraulics.mdb\n"
         elif 'Hydraulics.gdb' in db_files:
 	        db_path = f"--recursive {grid_dir}/Hydraulics.gdb {grid_dir}/Hydraulics.gdb\n"
-
-                
+                        
         #Get models
         reach = model_dir.split('/')[-2]
         bashCommand = f"globus ls {SOURCE_EP}:/{model_dir} --filter ~{reach}.* --jmespath DATA[*].[name,type,size] --format unix"
@@ -118,7 +118,7 @@ if __name__ == '__main__':
     args = vars(parser.parse_args())
     HUC_LIST = args['huc']
     
-
+    
     #Get all files on GLOBUS (2 layers deep (hucs/reaches))
     print('Finding files...')
     bashCommand = f"globus ls {SOURCE_EP}:/ --recursive --recursive-depth-limit 1 --jmespath DATA[*].[name,type,size] --format unix"
@@ -158,10 +158,9 @@ if __name__ == '__main__':
         with open(master_batch_file, 'w') as file:
             input_lines = fileinput.input(batch_files)
             file.writelines(input_lines)
-    
+        
         #Fetch GLOBUS entire HUC
         print('Fetching data...')
         message = get_globus(master_batch_file)
         with open(WORKSPACE/'globus_transfer_info.txt', 'a+') as file:
             file.write(f'{message} transfer time: {strftime("%Y-%m-%d %H:%M:%S%p", localtime())}\n')
-        
