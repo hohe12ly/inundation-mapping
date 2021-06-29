@@ -344,45 +344,8 @@ for file in flow_files:
     for model_file in model_files:
         shutil.copy(str(model_file), str(dest_model_dir/model_file.name))
 
-#Step 4: Preprocess depth grids. Copy this section into ArcPro
-###############################################################################
-import arcpy
-from pathlib import Path
-import pandas as pd
 
-WORKSPACE = Path('Path/to/workspace')
-HUC_DIRECTORY=Path('Path/to/source/data')
-GRIDS_DIR = WORKSPACE/'grids'
-GRIDS_DIR.mkdir(parents = True, exist_ok = True)
-gdb_files = list(WORKSPACE.rglob('*.gdb'))
-all_profile = pd.DataFrame()
-for geodatabase in gdb_files:
-    geodatabase = geodatabase/'ProfileDefinition'
-    data = arcpy.da.TableToNumPyArray(str(geodatabase), ('Profile','Alias'))
-    profile = pd.DataFrame(data)
-    profile['source'] = str(geodatabase)
-    all_profile = all_profile.append(profile, ignore_index = True)
-events = all_profile.groupby('Profile')['Alias'].agg('unique')
-events.to_csv(GRIDS_DIR/'profiles.csv')
-events = events.to_dict()
-for profile, aliases in events.items():
-    if len(aliases) == 1:
-        events.update({profile:aliases.item()})
-        print(f'{profile} has {aliases} value only')
-    else:
-        events.update({profile:aliases[0]})
-#Assuming the aliases are consistent throughout a HUC, preprocess GRIDS
-REF_RASTER = Path(r'Path/to/Ref/Raster') #Or path to reference raster
-CELL_SIZE = 10
-CRS = arcpy.Describe (str(REF_RASTER)).spatialReference
-for profile, alias in events.items():        
-    depth_grid_name = f'd{profile.lower()}'
-    #find all grids with this name
-    grids =list(HUC_DIRECTORY.rglob(f'*{depth_grid_name}*'))
-    grids = [str(arcgrid) for arcgrid in grids if arcgrid.is_dir()]
-    arcpy.management.MosaicToNewRaster(input_rasters=grids, output_location=str(GRIDS_DIR), raster_dataset_name_with_extension=f'{alias.lower()}.tif', coordinate_system_for_the_raster=CRS, pixel_type='32_BIT_FLOAT', cellsize=CELL_SIZE, number_of_bands=1, mosaic_method='MAXIMUM')
-
-#Step 5: Populate XS layer with flows from HEC-RAS model, also export rivers. 
+#Step 4: Populate XS layer with flows from HEC-RAS model, also export rivers. 
 ##############################################################################
 project_files = list((WORKSPACE/'models').rglob('*.prj'))
 for project_file in project_files:
@@ -427,13 +390,51 @@ for river in river_files:
 all_xs.to_file(WORKSPACE/'spatial'/'xs.shp')
 all_river.to_file(WORKSPACE/'spatial'/'river.shp')   
 
-#6. Process grids and write flow files
+#Step 5. Process grids and write flow files
 ##############################################################################
 ##############################################################################
 #Write Flow Files
 ###############################################################################
 ifc_xs_layer =  WORKSPACE/'spatial'/'xs.shp'
 write_ifc_flow_file(ifc_xs_layer, nwm_gpkg)
+
+#Step 6: Preprocess depth grids. Copy this section into ArcPro
+###############################################################################
+import arcpy
+from pathlib import Path
+import pandas as pd
+
+WORKSPACE = Path('Path/to/workspace')
+HUC_DIRECTORY=Path('Path/to/source/data')
+GRIDS_DIR = WORKSPACE/'grids'
+GRIDS_DIR.mkdir(parents = True, exist_ok = True)
+gdb_files = list(WORKSPACE.rglob('*.gdb'))
+all_profile = pd.DataFrame()
+for geodatabase in gdb_files:
+    geodatabase = geodatabase/'ProfileDefinition'
+    data = arcpy.da.TableToNumPyArray(str(geodatabase), ('Profile','Alias'))
+    profile = pd.DataFrame(data)
+    profile['source'] = str(geodatabase)
+    all_profile = all_profile.append(profile, ignore_index = True)
+events = all_profile.groupby('Profile')['Alias'].agg('unique')
+events.to_csv(GRIDS_DIR/'profiles.csv')
+events = events.to_dict()
+for profile, aliases in events.items():
+    if len(aliases) == 1:
+        events.update({profile:aliases.item()})
+        print(f'{profile} has {aliases} value only')
+    else:
+        events.update({profile:aliases[0]})
+#Assuming the aliases are consistent throughout a HUC, preprocess GRIDS
+REF_RASTER = Path(r'Path/to/Ref/Raster') #Or path to reference raster
+CELL_SIZE = 10
+CRS = arcpy.Describe (str(REF_RASTER)).spatialReference
+for profile, alias in events.items():        
+    depth_grid_name = f'd{profile.lower()}'
+    #find all grids with this name
+    grids =list(HUC_DIRECTORY.rglob(f'*{depth_grid_name}*'))
+    grids = [str(arcgrid) for arcgrid in grids if arcgrid.is_dir()]
+    arcpy.management.MosaicToNewRaster(input_rasters=grids, output_location=str(GRIDS_DIR), raster_dataset_name_with_extension=f'{alias.lower()}.tif', coordinate_system_for_the_raster=CRS, pixel_type='32_BIT_FLOAT', cellsize=CELL_SIZE, number_of_bands=1, mosaic_method='MAXIMUM')
 
 ###############################################################################
 #Preprocess Benchmark Grids

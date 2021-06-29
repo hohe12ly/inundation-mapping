@@ -342,37 +342,8 @@ for file in flow_files:
     for model_file in model_files:
         shutil.copy(str(model_file), str(dest_model_dir/model_file.name))
 
-#Step 4: Merge flood polygons and convert to raster
-###############################################################################
-import arcpy
-from pathlib import Path
-import pandas as pd
-GRIDS_DIR = USACE_WORKSPACE/'grids'
-GRIDS_DIR.mkdir(parents = True, exist_ok = True)
-all_gdf = gpd.GeoDataFrame()
-for gdb in gdb_files:
-    gdf = gpd.read_file(gdb, layer = 'S_FLD_HAZ_AR')
-    all_gdf = all_gdf.append(gdf)
-events = all_gdb.FLD_ZONE.unique()
-for event in events:
-    poly = all_gdb.query(f'FLD_ZONE == "{event}"')
-    dissolved = poly.dissolve(by = 'FLD_ZONE')
-    dissolved.to_file(GRIDS_DIR / f"{event.replace(' ','_').lower()}.shp")
 
-#Arcpro
-#vector to raster (feature to raster)
-
-REF_RASTER = Path(r'Path/to/Ref/Raster') #Or path to reference raster
-CELL_SIZE = 10
-CRS = arcpy.Describe (str(REF_RASTER)).spatialReference
-for profile, alias in events.items():        
-    depth_grid_name = f'd{profile.lower()}'
-    #find all grids with this name
-    grids =list(USACE_HUC_DIRECTORY.rglob(f'*{depth_grid_name}*'))
-    grids = [str(arcgrid) for arcgrid in grids if arcgrid.is_dir()]
-    arcpy.management.MosaicToNewRaster(input_rasters=grids, output_location=str(GRIDS_DIR), raster_dataset_name_with_extension=f'{alias.lower()}.tif', coordinate_system_for_the_raster=CRS, pixel_type='32_BIT_FLOAT', cellsize=CELL_SIZE, number_of_bands=1, mosaic_method='MAXIMUM')
-
-#Step 5: Populate XS layer with flows from HEC-RAS model, also export rivers. 
+#Step 4: Populate XS layer with flows from HEC-RAS model, also export rivers. 
 ##############################################################################
 project_files = list((USACE_WORKSPACE/'models').rglob('*.prj'))
 for project_file in project_files:
@@ -417,13 +388,43 @@ for river in river_files:
 all_xs.to_file(USACE_WORKSPACE/'spatial'/'xs.shp')
 all_river.to_file(USACE_WORKSPACE/'spatial'/'river.shp')   
 
-#6. Process grids and write flow files
+#Step 5. Process grids and write flow files
 ##############################################################################
 ##############################################################################
 #Write Flow Files
 ###############################################################################
 ifc_xs_layer =  USACE_WORKSPACE/'spatial'/'xs.shp'
 write_ifc_flow_file(ifc_xs_layer, nwm_gpkg)
+
+#Step 6: Merge flood polygons and convert to raster
+###############################################################################
+import arcpy
+from pathlib import Path
+import pandas as pd
+GRIDS_DIR = USACE_WORKSPACE/'grids'
+GRIDS_DIR.mkdir(parents = True, exist_ok = True)
+all_gdf = gpd.GeoDataFrame()
+for gdb in gdb_files:
+    gdf = gpd.read_file(gdb, layer = 'S_FLD_HAZ_AR')
+    all_gdf = all_gdf.append(gdf)
+events = all_gdb.FLD_ZONE.unique()
+for event in events:
+    poly = all_gdb.query(f'FLD_ZONE == "{event}"')
+    dissolved = poly.dissolve(by = 'FLD_ZONE')
+    dissolved.to_file(GRIDS_DIR / f"{event.replace(' ','_').lower()}.shp")
+
+#Arcpro
+#vector to raster (feature to raster)
+
+REF_RASTER = Path(r'Path/to/Ref/Raster') #Or path to reference raster
+CELL_SIZE = 10
+CRS = arcpy.Describe (str(REF_RASTER)).spatialReference
+for profile, alias in events.items():        
+    depth_grid_name = f'd{profile.lower()}'
+    #find all grids with this name
+    grids =list(USACE_HUC_DIRECTORY.rglob(f'*{depth_grid_name}*'))
+    grids = [str(arcgrid) for arcgrid in grids if arcgrid.is_dir()]
+    arcpy.management.MosaicToNewRaster(input_rasters=grids, output_location=str(GRIDS_DIR), raster_dataset_name_with_extension=f'{alias.lower()}.tif', coordinate_system_for_the_raster=CRS, pixel_type='32_BIT_FLOAT', cellsize=CELL_SIZE, number_of_bands=1, mosaic_method='MAXIMUM')
 
 ###############################################################################
 #Preprocess Benchmark Grids
