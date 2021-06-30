@@ -227,9 +227,9 @@ def get_river(source, geodatabase, spatial_dir):
         gdb_gpd = gdb_gpd.filter(items= ['RiverCode','ReachCode','geometry'])
         stem = gdb_gpd.RiverCode.unique().item()
     elif source == 'usace':
-        gdb_gpd = gpd.read_file(geodatabase, layer = 'S_XS')
-        gdb_gpd = gdb_gpd.filter(items= ['WTR_NM','STREAM_STN','geometry'])
-    
+        gdb_gpd = gpd.read_file(geodatabase, layer = 'S_Profil_Basln')
+        gdb_gpd = gdb_gpd.filter(items= ['WTR_NM','geometry'])
+        stem = gdb_gpd.WTR_NM.unique().item()
     #Reproject to FIM projection and export data to shapefile
     gdb_gpd.to_crs(PREP_PROJECTION)
     #Write to file
