@@ -82,6 +82,8 @@ def preprocess_benchmark_static(benchmark_raster, reference_raster, out_raster_p
             with rasterio.open(out_raster_path, 'w', **profile) as dst:
                 dst.write(boolean_benchmark.astype('int8'),1)   
     return boolean_benchmark.astype('int8'), profile
+
+
 def write_ifc_flow_file(ifc_xs_layer, nwm_gpkg):
     #Change these if needed
     #nwm_stream_layer_name = 'RouteLink_FL'
@@ -135,6 +137,8 @@ def write_ifc_flow_file(ifc_xs_layer, nwm_gpkg):
         output_dir = WORKSPACE/f'validation_{huc}'/return_period[i]
         output_dir.mkdir(parents = True, exist_ok = True)
         forecast.to_csv(output_dir /f"ifc_huc_{huc}_flows_{return_period[i]}.csv" ,index=False)  
+
+
 def get_hec_ras_flows(flow_file):
     '''
     Retrieves flows from HEC-RAS flow file.
@@ -194,15 +198,20 @@ def get_hec_ras_flows(flow_file):
                 #Append flow information
                 all_flows = all_flows.append(flow_df, ignore_index = True)
     return all_flows
+
+
 def get_model_info(project_file):
+    #This function gets the model units (SI or English) and the active plan
     file = Path(project_file)
     with open(file) as f:
         contents = f.read().splitlines()
         [plan_file_ext] = [i.split('=')[-1] for i in contents if i.startswith('Current Plan=')]
         model_unit_system = contents[3]
     return model_unit_system, plan_file_ext
+
  
 def get_model_files(plan_file):
+    #This function retrieves the active geometry and flow file from the active plan file.
     file = Path(plan_file)
     with open(file) as f:
         contents = f.read().splitlines()
@@ -212,6 +221,7 @@ def get_model_files(plan_file):
            
 #Get spatial data
 def get_xs(source, geodatabase):
+    #This function retrieves the Cross Section layer from the geodatabase.
     geodatabase = Path(geodatabase)
     if source == 'ifc':
         gdb_gpd = gpd.read_file(geodatabase, layer = 'XSCutlines')
@@ -220,7 +230,10 @@ def get_xs(source, geodatabase):
         gdb_gpd = gpd.read_file(geodatabase, layer = 'S_XS')
         gdb_gpd = gdb_gpd.filter(items= ['WTR_NM','STREAM_STN','geometry'])
     return gdb_gpd
+
+
 def get_river(source, geodatabase, spatial_dir):
+    #This function retrieves the river layer from the geodatabase.
     geodatabase = Path(geodatabase)
     if source == 'ifc':
         gdb_gpd = gpd.read_file(geodatabase, layer = 'River2D')
@@ -228,13 +241,15 @@ def get_river(source, geodatabase, spatial_dir):
         stem = gdb_gpd.RiverCode.unique().item()
     elif source == 'usace':
         gdb_gpd = gpd.read_file(geodatabase, layer = 'S_XS')
-        gdb_gpd = gdb_gpd.filter(items= ['WTR_NM','STREAM_STN','geometry'])
-    
+        gdb_gpd = gdb_gpd.filter(items= ['WTR_NM','STREAM_STN','geometry'])   
     #Reproject to FIM projection and export data to shapefile
     gdb_gpd.to_crs(PREP_PROJECTION)
     #Write to file
     gdb_gpd.to_file(spatial_dir / f'{stem}_river.shp') 
+
+
 def assign_xs_flows(source, flow_file, project_file, geodatabase, workspace):
+    #This function attributes flows to the cross section spatial layer using the HEC-RAS flow file.
     #Get flows from HEC-RAS model
     flows = get_hec_ras_flows(flow_file)
     #Get flow units
@@ -279,45 +294,48 @@ PREP_PROJECTION = 'PROJCS["USA_Contiguous_Albers_Equal_Area_Conic_USGS_version",
 nwm_gpkg = '/path/to/fim/nwm_flows.gpkg'
 ###############################################################################
 
+
 #Step 1: Find all mdb and convert to gdb. If mdb's present copy print statement 
 #into arcmap to convert mdb to gdb. Once finished, close arcmap to remove lock files.
 ###############################################################################
 mdbs = list(HUC_DIRECTORY.rglob("*.mdb"))
-if mdbs:
-    print('Use ARCMAP TO CONVERT MDB TO GDB FIRST!')
-    #USE ARCMAP TO CONVERT   
-    message = '''
-    #Paste this script in ARCMAP(NOT ARCPRO)
-    import os
-    import arcpy
-    PATH = r'{0}'
-    mdbs = [os.path.join(dp, f) for dp, dn, filenames in os.walk(PATH) for f in filenames if os.path.splitext(f)[1] == '.mdb']
-    for mdb in mdbs:
-        print(mdb)
-        #Write geodatabase
-        out_directory = os.path.dirname(mdb)
-        gdb_name = os.path.splitext(os.path.basename(mdb))[0]
-        arcpy.CreateFileGDB_management(out_folder_path=out_directory, out_name=gdb_name, out_version="CURRENT")
-        #Copy mdb layers from mdb to gdb
-        arcpy.env.workspace = mdb
-        #Get dataset names
-        layers = []
-        datasets = arcpy.ListDatasets(feature_type='feature')
-        datasets = [''] + datasets if datasets is not None else []
-        for ds in datasets:
-            for fc in arcpy.ListFeatureClasses(feature_dataset=ds):
-                path = os.path.join(arcpy.env.workspace, ds, fc)
-                layers.append(path)
-        # Get tables
-        tables = arcpy.ListTables()
-        for table in tables:
-            path = os.path.join(arcpy.env.workspace, table)
+
+#USE ARCMAP TO CONVERT   
+message = '''
+#Paste this script in ARCMAP(NOT ARCPRO)
+import os
+import arcpy
+PATH = r'{0}'
+mdbs = [os.path.join(dp, f) for dp, dn, filenames in os.walk(PATH) for f in filenames if os.path.splitext(f)[1] == '.mdb']
+for mdb in mdbs:
+    print(mdb)
+    #Write geodatabase
+    out_directory = os.path.dirname(mdb)
+    gdb_name = os.path.splitext(os.path.basename(mdb))[0]
+    arcpy.CreateFileGDB_management(out_folder_path=out_directory, out_name=gdb_name, out_version="CURRENT")
+    #Copy mdb layers from mdb to gdb
+    arcpy.env.workspace = mdb
+    #Get dataset names
+    layers = []
+    datasets = arcpy.ListDatasets(feature_type='feature')
+    datasets = [''] + datasets if datasets is not None else []
+    for ds in datasets:
+        for fc in arcpy.ListFeatureClasses(feature_dataset=ds):
+            path = os.path.join(arcpy.env.workspace, ds, fc)
             layers.append(path)
-        #spatial_layers = ['S_Fld_Haz_Ar','S_Profil_Basln','S_XS']
-        for layer in layers:
-            out_layer = os.path.join(out_directory, gdb_name+'.gdb',os.path.basename(layer))
-            arcpy.Copy_management(layer,out_layer)
-    '''
+    # Get tables
+    tables = arcpy.ListTables()
+    for table in tables:
+        path = os.path.join(arcpy.env.workspace, table)
+        layers.append(path)
+    #spatial_layers = ['S_Fld_Haz_Ar','S_Profil_Basln','S_XS']
+    for layer in layers:
+        out_layer = os.path.join(out_directory, gdb_name+'.gdb',os.path.basename(layer))
+        arcpy.Copy_management(layer,out_layer)
+'''
+if not mdbs:
+    print('continue to Step 2')
+else:
     print(message.format(str(HUC_DIRECTORY)))
 
 #Step 2: Copy all gdb files to preprocess directory
@@ -327,6 +345,7 @@ for gdb in gdb_files:
     dest = WORKSPACE/'spatial'/gdb.parent.parent.parent.name
     dest.mkdir(parents=True, exist_ok = True)
     shutil.copytree(gdb, dest/gdb.name)
+
 
 #Step 3: Copy models to preprocess directory
 ##############################################################################
@@ -390,6 +409,7 @@ for river in river_files:
 all_xs.to_file(WORKSPACE/'spatial'/'xs.shp')
 all_river.to_file(WORKSPACE/'spatial'/'river.shp')   
 
+
 #Step 5. Process grids and write flow files
 ##############################################################################
 ##############################################################################
@@ -398,14 +418,16 @@ all_river.to_file(WORKSPACE/'spatial'/'river.shp')
 ifc_xs_layer =  WORKSPACE/'spatial'/'xs.shp'
 write_ifc_flow_file(ifc_xs_layer, nwm_gpkg)
 
+
 #Step 6: Preprocess depth grids. Copy this section into ArcPro
 ###############################################################################
 import arcpy
 from pathlib import Path
 import pandas as pd
 
-WORKSPACE = Path('Path/to/workspace')
 HUC_DIRECTORY=Path('Path/to/source/data')
+WORKSPACE = Path('Path/to/workspace')
+REF_RASTER = Path(r'Path/to/Ref/Raster') #Or path to reference raster
 GRIDS_DIR = WORKSPACE/'grids'
 GRIDS_DIR.mkdir(parents = True, exist_ok = True)
 gdb_files = list(WORKSPACE.rglob('*.gdb'))
@@ -426,7 +448,6 @@ for profile, aliases in events.items():
     else:
         events.update({profile:aliases[0]})
 #Assuming the aliases are consistent throughout a HUC, preprocess GRIDS
-REF_RASTER = Path(r'Path/to/Ref/Raster') #Or path to reference raster
 CELL_SIZE = 10
 CRS = arcpy.Describe (str(REF_RASTER)).spatialReference
 for profile, alias in events.items():        
@@ -436,8 +457,9 @@ for profile, alias in events.items():
     grids = [str(arcgrid) for arcgrid in grids if arcgrid.is_dir()]
     arcpy.management.MosaicToNewRaster(input_rasters=grids, output_location=str(GRIDS_DIR), raster_dataset_name_with_extension=f'{alias.lower()}.tif', coordinate_system_for_the_raster=CRS, pixel_type='32_BIT_FLOAT', cellsize=CELL_SIZE, number_of_bands=1, mosaic_method='MAXIMUM')
 
+
 ###############################################################################
-#Preprocess Benchmark Grids
+#Step 7: Preprocess Benchmark Grids
 ###############################################################################
 benchmark_rasters = list(WORKSPACE.rglob('*.tif'))
 #define fields containing flow (typically these won't change for BLE)
@@ -454,12 +476,15 @@ for raster in benchmark_rasters:
 
     preprocess_benchmark_static(raster, REF_RASTER, out_raster_path = output_path)
 
-#Once all preprocessing is finished, Step 7 copies the evaluation data into one folder.   
-#7. Get all preprocessed data in format for uploading to VM
+
 ################################################################################
-validation_folders = list(WORKSPACE.parent.rglob('validation_*'))
+#Step 8: Do this last after all preprocessing is finished. Step 8 copies the evaluation data into one folder so it can be copied up to the VM.   
+################################################################################
+
+PROCESSED_DIRECTORY = Path('/path/to/all/processed/hucs')
+validation_folders = list(PROCESSED_DIRECTORY.rglob('validation_*'))
 for folder in validation_folders:
-    dest_dir = WORKSPACE.parent/'all_validation'
+    dest_dir = PROCESSED_DIRECTORY/'for_VM'
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest_fold = str(folder.stem).split('_')[1]
     shutil.copytree(folder, dest_dir/dest_fold)  
