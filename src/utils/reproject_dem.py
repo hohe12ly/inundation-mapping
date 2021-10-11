@@ -24,6 +24,7 @@ def reproject_dem(args):
 
     print(f"Reprojecting {elev_cm_proj}")
     gdal.Warp(elev_cm_proj,elev_cm_proj,dstSRS=reprojection)
+    print(f"Projected data")
 
 
 if __name__ == '__main__':
@@ -45,6 +46,4 @@ if __name__ == '__main__':
         elev_cm_proj = os.path.join(raster_dir, 'elev_cm_proj.tif')
         reproject_procs_list.append([raster_dir, elev_cm, elev_cm_proj, PREP_PROJECTION_CM])
 
-    # Multiprocess reprojection
-    with Pool(processes=number_of_jobs) as pool:
-        pool.map(reproject_dem, reproject_procs_list)
+    print(reproject_procs_list)
