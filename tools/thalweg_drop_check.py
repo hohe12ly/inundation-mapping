@@ -50,6 +50,9 @@ def compare_thalweg(args):
     profile_gpkg_filename               = args[8]
     profile_table_filename              = args[9]
     flows_grid_boolean_filename         = args[10]
+    lateral_elevation_threshold         = float(args[11])
+
+    print(huc)
 
     if stream_type == 'derived':
 
@@ -59,7 +62,7 @@ def compare_thalweg(args):
         wbd_filename = os.path.join(huc_dir,'wbd.gpkg')
         wbd = gpd.read_file(wbd_filename)
         headwaters_layer = gpd.read_file(nhd_headwater_filename,mask=wbd)
-        headwater_list = headwaters_layer.loc[headwaters_layer.pt_type == 'nws_lid']
+        headwater_list = headwaters_layer.loc[headwaters_layer.mainstem == True]
         stream_id = 'HydroID'
 
     elif stream_type == 'burnline':
@@ -184,6 +187,7 @@ def compare_thalweg(args):
         thalweg_points = thalweg_points.loc[thalweg_points.elevation_m > 0.0]
         thalweg_points.elevation_m =  np.round(thalweg_points.elevation_m,3)
         thalweg_points['elevation_ft'] =  np.round(thalweg_points.elevation_m*3.28084,3)
+        thalweg_points['huc8'] = huc
 
         # Plot thalweg profile
         plot_profile(thalweg_points, profile_plots_filename)
@@ -196,7 +200,7 @@ def compare_thalweg(args):
         thal_adj_points['elev_change'] = thal_adj_points.groupby(['headwater_path', 'source'])['elevation_m'].apply(lambda x: x - x.shift())
         elev_changes = thal_adj_points.loc[(thal_adj_points.elev_change<=-lateral_elevation_threshold) | (thal_adj_points.elev_change>0.0)]
 
-        if not elev_changes.empty:
+        if not elev_changes.empty or True:
             # elev_changes.to_csv(profile_table_filename,index=False)
             elev_changes.to_file(profile_gpkg_filename,index=False,driver=getDriver(profile_gpkg_filename))
 
@@ -323,6 +327,7 @@ if __name__ == '__main__':
     stream_type = args['stream_type']
     point_density = args['point_density']
     number_of_jobs = args['number_of_jobs']
+    elevation_threshold = args['elevation_threshold']
 
     # dem_meters_dir = os.environ.get('dem_meters')
 
@@ -350,7 +355,18 @@ if __name__ == '__main__':
             profile_gpkg_filename = os.path.join(spatial_dir,f"thalweg_elevation_changes_{huc}_{point_density}_{stream_type}.gpkg")
             profile_table_filename = os.path.join(spatial_dir,f"thalweg_elevation_changes_{huc}_{point_density}_{stream_type}.csv")
 
-            procs_list.append([huc_dir,stream_type,point_density,huc,dem_meters_filename,dem_lateral_thalweg_adj_filename,dem_thalwegCond_filename,profile_plots_filename,profile_gpkg_filename,profile_table_filename,flows_grid_boolean_filename])
+            procs_list.append([huc_dir,
+                               stream_type,
+                               point_density,
+                               huc,
+                               dem_meters_filename,
+                               dem_lateral_thalweg_adj_filename,
+                               dem_thalwegCond_filename,
+                               profile_plots_filename,
+                               profile_gpkg_filename,
+                               profile_table_filename,
+                               flows_grid_boolean_filename,
+                               elevation_threshold])
 
     # Initiate multiprocessing
     print(f"Generating thalweg elevation profiles for {len(procs_list)} hucs using {number_of_jobs} jobs")

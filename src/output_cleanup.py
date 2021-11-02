@@ -52,6 +52,9 @@ def output_cleanup(huc_number, output_folder_path, additional_whitelist, is_prod
         'small_segments.csv'
     ]
 
+    production_whitelist = []
+    viz_whitelist = []
+
     # If "production" run, only keep whitelisted files
     if is_production and not is_viz_post_processing:
         whitelist_directory(output_folder_path, production_whitelist, additional_whitelist)

@@ -411,6 +411,13 @@ Tstart
 python3 -m memory_profiler $srcDir/usgs_gage_crosswalk.py -gages $inputDataDir/usgs_gages/usgs_gages.gpkg -dem $outputHucDataDir/dem_meters.tif -flows $outputHucDataDir/demDerived_reaches_split_filtered_addedAttributes_crosswalked.gpkg -cat $outputHucDataDir/gw_catchments_reaches_filtered_addedAttributes_crosswalked.gpkg -wbd $outputHucDataDir/wbd_buffered.gpkg -dem_adj $dem_thalwegCond -outtable $outputHucDataDir/usgs_elev_table.csv -e $extent
 Tcount
 
+## THALWEG NOTCH DETECTION ##
+echo -e $startDiv"THALWEG NOTCH DETECTION $hucNumber"$stopDiv
+date -u
+Tstart
+python3 /foss_fim/tools/thalweg_notch_detect.py -d $outputHucDataDir/dem_meters.tif -f $outputHucDataDir/dem_thalwegCond.tif -g $outputHucDataDir/temp_grass -t 1.0 -l 50 -c $outputHucDataDir/gw_catchments_reaches_filtered_addedAttributes_crosswalked.gpkg
+Tcount
+
 ## CLEANUP OUTPUTS ##
 echo -e $startDiv"Cleaning up outputs $hucNumber"$stopDiv
 args=()
