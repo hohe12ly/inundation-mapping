@@ -16,6 +16,7 @@ from rasterio import features
 from shapely.geometry import shape
 from shapely.geometry import Polygon
 from shapely.geometry import MultiPolygon
+import time
 
 
 def check_for_regression(stats_json_to_test, previous_version, previous_version_stats_json_path, regression_test_csv=None):
@@ -606,6 +607,7 @@ def get_metadata(metadata_url, select_by, selector, must_include = None, upstrea
     params['downstream_trace_distance'] = downstream_trace_distance
     #Request data from url
     response = requests.get(url, params = params)
+    print(response)
     if response.ok:
         #Convert data response to a json
         metadata_json = response.json()
@@ -869,43 +871,51 @@ def get_thresholds(threshold_url, select_by, selector, threshold = 'all'):
     params['threshold'] = threshold
     url = f'{threshold_url}/{select_by}/{selector}'
     response = requests.get(url, params = params)
-    if response.ok:
-        thresholds_json = response.json()
-        #Get metadata
-        thresholds_info = thresholds_json['value_set']
-        #Initialize stages/flows dictionaries
-        stages = {}
-        flows = {}
-        #Check if thresholds information is populated. If site is non-existent thresholds info is blank
-        if thresholds_info:
-            #Get all rating sources and corresponding indexes in a dictionary
-            rating_sources = {i.get('calc_flow_values').get('rating_curve').get('source'): index for index, i in enumerate(thresholds_info)}
-            #Get threshold data use USGS Rating Depot (priority) otherwise NRLDB.
-            if 'USGS Rating Depot' in rating_sources:
-                threshold_data = thresholds_info[rating_sources['USGS Rating Depot']]
-            elif 'NRLDB' in rating_sources:
-                threshold_data = thresholds_info[rating_sources['NRLDB']]
-            #If neither USGS or NRLDB is available use first dictionary to get stage values.
-            else:
-                threshold_data = thresholds_info[0]
-            #Get stages and flows for each threshold
-            if threshold_data:
-                stages = threshold_data['stage_values']
-                flows = threshold_data['calc_flow_values']
-                #Add source information to stages and flows. Flows source inside a nested dictionary. Remove key once source assigned to flows.
-                stages['source'] = threshold_data.get('metadata').get('threshold_source')
-                flows['source'] = flows.get('rating_curve', {}).get('source')
-                flows.pop('rating_curve', None)
-                #Add timestamp WRDS data was retrieved.
-                stages['wrds_timestamp'] = response.headers['Date']
-                flows['wrds_timestamp'] = response.headers['Date']
-                #Add Site information
-                stages['nws_lid'] = threshold_data.get('metadata').get('nws_lid')
-                flows['nws_lid'] = threshold_data.get('metadata').get('nws_lid')
-                stages['usgs_site_code'] = threshold_data.get('metadata').get('usgs_site_code')
-                flows['usgs_site_code'] = threshold_data.get('metadata').get('usgs_site_code')
-                stages['units'] = threshold_data.get('metadata').get('stage_units')
-                flows['units'] = threshold_data.get('metadata').get('calc_flow_units')
+
+    retry_limit = 14400
+    retries = 0
+    while not response.ok and retries < retry_limit:
+        time.sleep(0.5)
+        response = requests.get(url, params = params)
+        retries += 1
+        print(retries)
+        
+    thresholds_json = response.json()
+    #Get metadata
+    thresholds_info = thresholds_json['value_set']
+    #Initialize stages/flows dictionaries
+    stages = {}
+    flows = {}
+    #Check if thresholds information is populated. If site is non-existent thresholds info is blank
+    if thresholds_info:
+        #Get all rating sources and corresponding indexes in a dictionary
+        rating_sources = {i.get('calc_flow_values').get('rating_curve').get('source'): index for index, i in enumerate(thresholds_info)}
+        #Get threshold data use USGS Rating Depot (priority) otherwise NRLDB.
+        if 'USGS Rating Depot' in rating_sources:
+            threshold_data = thresholds_info[rating_sources['USGS Rating Depot']]
+        elif 'NRLDB' in rating_sources:
+            threshold_data = thresholds_info[rating_sources['NRLDB']]
+        #If neither USGS or NRLDB is available use first dictionary to get stage values.
+        else:
+            threshold_data = thresholds_info[0]
+        #Get stages and flows for each threshold
+        if threshold_data:
+            stages = threshold_data['stage_values']
+            flows = threshold_data['calc_flow_values']
+            #Add source information to stages and flows. Flows source inside a nested dictionary. Remove key once source assigned to flows.
+            stages['source'] = threshold_data.get('metadata').get('threshold_source')
+            flows['source'] = flows.get('rating_curve', {}).get('source')
+            flows.pop('rating_curve', None)
+            #Add timestamp WRDS data was retrieved.
+            stages['wrds_timestamp'] = response.headers['Date']
+            flows['wrds_timestamp'] = response.headers['Date']
+            #Add Site information
+            stages['nws_lid'] = threshold_data.get('metadata').get('nws_lid')
+            flows['nws_lid'] = threshold_data.get('metadata').get('nws_lid')
+            stages['usgs_site_code'] = threshold_data.get('metadata').get('usgs_site_code')
+            flows['usgs_site_code'] = threshold_data.get('metadata').get('usgs_site_code')
+            stages['units'] = threshold_data.get('metadata').get('stage_units')
+            flows['units'] = threshold_data.get('metadata').get('calc_flow_units')
     return stages, flows
 
 ########################################################################

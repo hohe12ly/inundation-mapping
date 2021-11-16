@@ -80,10 +80,8 @@ def generate_catfim_flows(workspace, nwm_us_search, nwm_ds_search):
     huc_dictionary, out_gdf = aggregate_wbd_hucs(metadata_list = all_lists, wbd_huc8_path = WBD_LAYER)
 
     #Get all possible mainstem segments
-    print('Getting list of mainstem segments')
+    print('Getting list of mainstem segments...')
     #Import list of evaluated sites
-    print(EVALUATED_SITES_CSV)
-    print(os.path.exists(EVALUATED_SITES_CSV))
     list_of_sites = pd.read_csv(EVALUATED_SITES_CSV)['Total_List'].to_list()
     #The entire routine to get mainstems is hardcoded in this function.
     ms_segs = mainstem_nwm_segs(metadata_url, list_of_sites)
