@@ -7,6 +7,7 @@ import json
 import shutil
 import logging
 import subprocess
+from datetime import datetime
 
 import socketio
 
@@ -14,6 +15,8 @@ DATA_PATH = os.environ.get('DATA_PATH')
 DOCKER_IMAGE_PATH = os.environ.get('DOCKER_IMAGE_PATH')
 GITHUB_REPO = os.environ.get('GITHUB_REPO')
 MAX_ALLOWED_CPU_CORES = int(os.environ.get('MAX_ALLOWED_CPU_CORES'))
+JOBS_CONTROL_FILE = os.environ.get('JOBS_CONTROL_FILE')
+NODE_CONNECTOR_URL = os.environ.get('NODE_CONNECTOR_URL')
 
 shared_data = {
     'connected': False,
@@ -23,8 +26,8 @@ shared_data = {
 buffer_jobs = []
 buffer_remove_jobs = []
 current_jobs = {}
-if os.path.exists('/data/outputs/current_jobs.json'):
-    with open('/data/outputs/current_jobs.json') as f:
+if os.path.exists(JOBS_CONTROL_FILE):
+    with open(JOBS_CONTROL_FILE) as f:
         current_jobs = json.load(f)
         for job_name in current_jobs.keys():
             if 'is_actively_saving' in current_jobs[job_name] and current_jobs[job_name]['is_actively_saving'] == True:
@@ -380,23 +383,31 @@ def update_loop():
             'current_output_files_saved_length': job['current_output_files_saved_length'],
         } for job in current_jobs.values()]
 
-        if shared_data['connected']: sio.emit('update', {'jobUpdates': job_updates, 'presetsList': presets_list})
-        with open('/data/outputs/current_jobs.json.temp', 'w') as f:
-            json.dump(current_jobs, f)
-            shutil.move('/data/outputs/current_jobs.json.temp', '/data/outputs/current_jobs.json') 
+        if shared_data['connected']: 
+            sio.emit('update', {'jobUpdates': job_updates, 'presetsList': presets_list})
+            
+        temp_job_control_file = JOBS_CONTROL_FILE + '.temp'
+        if os.path.exists(temp_job_control_file):
+            with open(temp_job_control_file, 'w') as f:
+                json.dump(current_jobs, f)
+                shutil.move(temp_job_control_file, JOBS_CONTROL_FILE) 
+
 
 sio = socketio.Client()
 
 @sio.event
 def connect():
-    print("Update Loop Connected!")
     sio.emit('updater_connected')
     shared_data['connected'] = True
+    print("Update Loop Connected!")
+    print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + " UTC")    
 
 @sio.event
 def disconnect():
-    print('disconnected from server')
     shared_data['connected'] = False
+    print('disconnected from server')
+    print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + " UTC")    
+   
 
 @sio.on('add_job_to_queue')
 def ws_add_job_to_queue(data):
@@ -496,7 +507,7 @@ def ws_remove_job_from_queue(data):
 # If the output_handler is offline, try the saving process again
 @sio.on('retry_saving_files')
 def ws_retry_saving_files():
-    print('saving files failed, retrying')
+    print('saving files failed via output handler, retrying')
     for job_name in current_jobs:
         if current_jobs[job_name]['status'] == "Saving File":
             for path in current_jobs[job_name]['output_files_saved']:
@@ -522,5 +533,7 @@ def ws_file_saved(data):
     current_jobs[job_name]['current_output_files_saved_length'] += 1
     current_jobs[job_name]['status'] = 'Ready to Save File'
 
-sio.connect('http://fim_node_connector:6000/')
-update_loop()
+
+if __name__ == '__main__':
+    sio.connect(NODE_CONNECTOR_URL)
+    update_loop()

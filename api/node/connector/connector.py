@@ -7,19 +7,15 @@ import time
 import random
 import logging
 import subprocess
-from datetime import date
+from datetime import date, datetime
 
 from flask import Flask, request
 from flask_socketio import SocketIO, emit
 
-DATA_PATH = os.environ.get('DATA_PATH')
-DOCKER_IMAGE_PATH = os.environ.get('DOCKER_IMAGE_PATH')
-SOCKET_URL = os.environ.get('SOCKET_URL')
-FRONTEND_URL = os.environ.get('FRONTEND_URL')
-GITHUB_REPO = os.environ.get('GITHUB_REPO')
+CONNECTOR_PORT_NUMBER = os.environ.get('CONNECTOR_PORT_NUMBER')
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins=[SOCKET_URL, FRONTEND_URL, "http://fim_node_connector:6000"])
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 shared_data = {
     'handler_sid': None,
@@ -32,27 +28,33 @@ def main():
 
 @socketio.on('connect')
 def ws_conn():
-    print('user connected!')
+    print('Web Service Connect: sid: ', request.sid)    
+    print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + " UTC")    
     emit('is_connected', True)
 
 @socketio.on('disconnect')
 def ws_disconn():
-    print('user disconnected!')
+    print('Web Service Disconnect: sid: ', request.sid)    
+    print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + " UTC")    
     emit('is_connected', False)
 
 @socketio.on('update')
 def ws_update(data):
+    print('Web Service Update: sid: ', request.sid)    
+    print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + " UTC")    
     emit('client_update', data, broadcast=True)
 
 @socketio.on('output_handler_connected')
 def ws_output_handler_connected():
-    print('handler_sid: ', request.sid)
+    print('Output Handler Connected: sid: ', request.sid)
+    print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + " UTC")        
     shared_data['handler_sid'] = request.sid
     emit('retry_saving_files', room=shared_data['updater_sid'])
 
 @socketio.on('updater_connected')
 def ws_updater_connected():
-    print('updater_sid: ', request.sid)
+    print('Updater Connected: sid: ', request.sid)
+    print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + " UTC")        
     shared_data['updater_sid'] = request.sid
     emit('retry_saving_files', room=shared_data['updater_sid'])
 
@@ -213,15 +215,17 @@ def ws_new_job(job_params):
             print('release job added')
             emit('job_added', 'release')
     
-    @socketio.on('cancel_job')
-    def ws_cancel_job(job_params):
-        # Validate Job Name Option
-        job_name = job_params['job_name']
+@socketio.on('cancel_job')
+def ws_cancel_job(job_params):
+    # Validate Job Name Option
+    job_name = job_params['job_name']
 
-        emit('remove_job_from_queue', {'job_name': job_name}, room=shared_data['updater_sid'])
-        print('job canceled')
-        emit('job_canceled', 'fim_run')
+    emit('remove_job_from_queue', {'job_name': job_name}, room=shared_data['updater_sid'])
+    print('job canceled')
+    emit('job_canceled', 'fim_run')
    
 
 if __name__ == '__main__':
-    socketio.run(app, host="0.0.0.0", port="6000")
+    print('start of main')
+    socketio.run(app, host="0.0.0.0", port=CONNECTOR_PORT_NUMBER)
+    print('end of main')

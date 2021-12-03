@@ -1,9 +1,10 @@
 import os
 import time
+from datetime import datetime
 
 import socketio
 
-SOCKET_URL = os.environ.get('SOCKET_URL')
+NODE_CONNECTOR_URL = os.environ.get('NODE_CONNECTOR_URL')
 
 def handle_outputs(data):
     job_name = data['job_name']
@@ -32,15 +33,19 @@ sio = socketio.Client()
 
 @sio.event
 def connect():
-    print("Output Handler Connected!")
+    print('Output Handler Connected to : ' + sio.connection_url)
+    print('sio connection sid: ', sio.sid)        
+    print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + " UTC")    
     sio.emit('output_handler_connected')
 
 @sio.event
 def disconnect():
-    print('disconnected from server')
+    print('Output Handler Disconnected from : ' + sio.connection_url)
+    print('sio connection sid: ', sio.sid)            
+    print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + " UTC")    
 
 @sio.on('new_job_outputs')
 def ws_new_job_outputs(data):
     handle_outputs(data)
 
-sio.connect(SOCKET_URL)
+sio.connect("http://fim_node_connector:4420")

@@ -10,7 +10,7 @@ COPY requirements.txt .
 RUN pip3 install -r requirements.txt --no-cache-dir
 COPY . /opt/connector
 
-EXPOSE 6000
+EXPOSE 4420
 
 RUN chmod +x /opt/connector/entrypoint.sh
 ENTRYPOINT ["/opt/connector/entrypoint.sh"]
