@@ -12,6 +12,9 @@ from datetime import datetime
 import socketio
 
 DATA_PATH = os.environ.get('DATA_PATH')
+DATA_INPUTS_PATH = os.environ.get('DATA_INPUTS_PATH')
+DATA_OUTPUT_PATH = os.environ.get('DATA_OUTPUT_PATH')
+DATA_WORKING_PATH = os.environ.get('DATA_WORKING_PATH')
 DOCKER_IMAGE_PATH = os.environ.get('DOCKER_IMAGE_PATH')
 GITHUB_REPO = os.environ.get('GITHUB_REPO')
 MAX_ALLOWED_CPU_CORES = int(os.environ.get('MAX_ALLOWED_CPU_CORES'))
@@ -23,6 +26,15 @@ shared_data = {
     'current_saving_job': ''
 }
 
+def get_display_datetime(include_delimiter = False):
+    dt_output = ''
+    if include_delimiter:
+        dt_output += ' -- '
+    dt_output += datetime.now().strftime("%m/%d/%Y %H:%M:%S") + ' UTC'
+    return dt_output
+
+
+is_running = False;
 buffer_jobs = []
 buffer_remove_jobs = []
 current_jobs = {}
@@ -40,7 +52,12 @@ if os.path.exists(JOBS_CONTROL_FILE):
 def update_loop():
     while True:
         # If there are no current jobs, just check every 10 seconds till there is
-        if len(current_jobs.keys()) == 0: sio.sleep(10)
+        # but only if this is not the first time it comes in. Otherwise, the UI has a 10 second delay on showing that then
+        # system is starting.
+        if len(current_jobs.keys()) == 0 and is_running:
+            sio.sleep(10)
+            
+        is_running = True
 
         while len(buffer_jobs) > 0:
             new_job = buffer_jobs.pop()
@@ -52,14 +69,13 @@ def update_loop():
                 current_jobs[job_to_remove['job_name']]['status'] = 'Cancelled'
 
         # Get list of current docker containers that are fim run jobs
-                                #    docker ps --all --filter=name=apijob --format='{{.Names}} {{.State}}'
         containers_raw = os.popen("docker ps --all --filter=name=apijob --format='{{.Names}} {{.State}}'").read().splitlines()
         containers_split = [ line.split() for line in containers_raw ]
         container_states = { name: state for (name, state) in containers_split }
 
         jobs_to_delete = []
         for job_name in current_jobs.keys():
-            sio.sleep(0)
+            #sio.sleep(0)
             if job_name in container_states:
                 current_jobs[job_name]['container_state'] = container_states[job_name]
 
@@ -70,12 +86,13 @@ def update_loop():
                     subprocess.call(f"docker container stop {job_name}", shell=True)
                     subprocess.call(f"docker container rm {job_name}", shell=True)
 
-                print("output_handler finished, deleted temp source files and output files")
-                temp_path = f"/data/temp/{job_name}"
+                print("------------------------")
+                print("Output_handler finished, deleted temp source files and output files for job: " + job_name + get_display_datetime(True))
+                temp_path = f"{DATA_WORKING_PATH}{job_name}"
                 if os.path.isdir(temp_path):
                     shutil.rmtree(temp_path)
 
-                outputs_path = f"/data/outputs/{current_jobs[job_name]['nice_name']}"
+                outputs_path = f"{DATA_OUTPUT_PATH}{current_jobs[job_name]['nice_name']}"
                 if os.path.isdir(outputs_path):
                     shutil.rmtree(outputs_path)
                 
@@ -127,6 +144,10 @@ def update_loop():
                 # print(f"Checking whether a new job can start {potential_active_cores} <= {MAX_ALLOWED_CPU_CORES}")
                 # print(potential_active_cores <= MAX_ALLOWED_CPU_CORES)
                 if potential_active_cores <= MAX_ALLOWED_CPU_CORES:
+                
+                    print("=================================")
+                    print("Starting a new job")
+                
                     job_name = current_jobs[job_name]['job_name']
                     nice_name = current_jobs[job_name]['nice_name']
                     branch = current_jobs[job_name]['branch']
@@ -138,35 +159,60 @@ def update_loop():
                     viz_run = current_jobs[job_name]['viz_run']
 
                     # Clone github repo, with specific branch, to a temp folder
-                    print(f'cd /data/temp && git clone -b {branch} {GITHUB_REPO} {job_name} && chmod -R 777 {job_name} && cp .env {job_name}/tools/.env')
-                    subprocess.call(f'cd /data/temp && git clone -b {branch} {GITHUB_REPO} {job_name} && chmod -R 777 {job_name} && cp .env {job_name}/tools/.env', shell=True)
+                    print("------------------------")
+                    print("Cloning repo for job: " + job_name + get_display_datetime(True))
+                    #print(f'cd {DATA_WORKING_PATH} && git clone -b {branch} {GITHUB_REPO} {job_name} && chmod -R 777 {job_name} && cp .env {job_name}/tools/.env')
+                    #print(f'cd {DATA_WORKING_PATH} && git clone -b {branch} {GITHUB_REPO} {job_name} && chmod -R 777 {job_name}')
+                    subprocess.call(f'cd ' + DATA_WORKING_PATH, shell=True)
+                    
+                    #subprocess.call(f'git clone -b {branch} {GITHUB_REPO} {job_name} && chmod -R 777 {job_name} && cp .env {job_name}/tools/.env', shell=True)
+                    subprocess.call(f'git clone -b {branch} {GITHUB_REPO} {job_name} && chmod -R 777 {job_name}', shell=True)
 
                     # Kick off the new job as a docker container with the new cloned repo as the volume
-                    print(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_PATH}temp/{job_name}/:/foss_fim {DOCKER_IMAGE_PATH} fim_run.sh -u \"{hucs}\" -e {extent} -c {config_path} -n {nice_name} -o {'' if dev_run else '-p'} {'-v' if viz_run else ''} -j {parallel_jobs}")
-                    subprocess.call(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_PATH}temp/{job_name}/:/foss_fim {DOCKER_IMAGE_PATH} fim_run.sh -u \"{hucs}\" -e {extent} -c {config_path} -n {nice_name} -o {'' if dev_run else '-p'} {'-v' if viz_run else ''} -j {parallel_jobs}", shell=True)
+                    print("Docker run for job: " + job_name + get_display_datetime(True))                    
+                    #print(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim {DOCKER_IMAGE_PATH} fim_run.sh -u \"{hucs}\" -e {extent} -c {config_path} -n {nice_name} -o {'' if dev_run else '-p'} {'-v' if viz_run else ''} -j {parallel_jobs}")
+                    
+                    subprocess.call(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim {DOCKER_IMAGE_PATH} fim_run.sh -u \"{hucs}\" -e {extent} -c {config_path} -n {nice_name} -o {'' if dev_run else '-p'} {'-v' if viz_run else ''} -j {parallel_jobs}", shell=True)
+                    
+                    
+                    # Check to see if the job kicked off already.
+                    try:
+                        exit_code_raw = os.popen(f"docker inspect {job_name}" + " --format='{{.State.ExitCode}}'").read().splitlines()
+                        if exit_code_raw[0] !=0:
+                            print ("An error has occured. Exit Code: " + exit_code_raw[0])
+                            
+                    except Exception as ex:
+                        print ("An error has occured while launching a new process. Exception Details :")
+                        print(ex)
+                        exit()
+                    
+                    
                     current_jobs[job_name]['status'] = 'In Progress'
+                    
+                    # The docker container will run for a while now. We will keep polling it until it is done.
+                    print("Processing job: " + job_name + get_display_datetime(True))
 
             # Once the Docker container is done, either save outputs or run release
             if current_jobs[job_name]['status'] == 'In Progress' and current_jobs[job_name]['container_state'] == 'exited':
 
                 # Get container exit code, get the docker log, and then remove container
                 exit_code_raw = os.popen(f"docker inspect {job_name}" + " --format='{{.State.ExitCode}}'").read().splitlines()
-
-                print("Exit code")
-                print(exit_code_raw)
-                print(exit_code_raw[0])
-                try:
-                    print(int(exit_code_raw[0]))
-                except:
-                    pass
+                
+                print("------------------------")
+                print("Docker container is ready for processing or saving outputs for job : " + job_name + get_display_datetime(True)) 
+                print("Exit code: " + exit_code_raw[0])
+                #try:
+                #    print(int(exit_code_raw[0]))
+                #except:
+                #    pass
 
                 exit_code = int(exit_code_raw[0])
                 current_jobs[job_name]['exit_code'] = exit_code
-                subprocess.call(f"docker logs {job_name} >& /data/outputs/{current_jobs[job_name]['nice_name']}/logs/docker.log", shell=True)
+                subprocess.call(f"docker logs {job_name} >& {DATA_OUTPUT_PATH}/{current_jobs[job_name]['nice_name']}/logs/docker.log", shell=True)
                 subprocess.call(f"docker container rm {job_name}", shell=True)
 
                 if current_jobs[job_name]['job_type'] == 'fim_run':
-                    for path, folders, files in os.walk(f"/data/outputs/{current_jobs[job_name]['nice_name']}"):
+                    for path, folders, files in os.walk(f"{DATA_OUTPUT_PATH}/{current_jobs[job_name]['nice_name']}"):
                         for file in files:
                             current_jobs[job_name]['output_files_saved'][os.path.join(path, file)] = 0
 
@@ -182,10 +228,15 @@ def update_loop():
 
                 if os.path.isdir(f"/data/previous_fim/{nice_name}"):
                     shutil.rmtree(f"/data/previous_fim/{nice_name}")
-                if os.path.isdir(f"/data/outputs/{nice_name}"): shutil.move(f"/data/outputs/{nice_name}", '/data/previous_fim')
+                if os.path.isdir(f"{DATA_OUTPUT_PATH}{nice_name}"): 
+                    shutil.move(f"{DATA_OUTPUT_PATH}/{nice_name}", '/data/previous_fim')
+                
                 # Kick off the new job as a docker container to run eval metrics
-                print(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_PATH}temp/{job_name}/:/foss_fim -w /foss_fim/tools {DOCKER_IMAGE_PATH} /foss_fim/tools/synthesize_test_cases.py -c PREV --fim-version {nice_name} --job-number {parallel_jobs} -m /data/test_cases/metrics_library/all_official_versions.csv")
-                subprocess.call(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_PATH}temp/{job_name}/:/foss_fim -w /foss_fim/tools {DOCKER_IMAGE_PATH} /foss_fim/tools/synthesize_test_cases.py -c PREV --fim-version {nice_name} --job-number {parallel_jobs} -m /data/test_cases/metrics_library/all_official_versions.csv", shell=True)
+                print("------------------------")
+                print("Running synthesize_test_cases for job: " + job_name + get_display_datetime(True))
+                print(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim -w /foss_fim/tools {DOCKER_IMAGE_PATH} /foss_fim/tools/synthesize_test_cases.py -c PREV --fim-version {nice_name} --job-number {parallel_jobs} -m /data/test_cases/metrics_library/all_official_versions.csv")
+                print()
+                subprocess.call(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim -w /foss_fim/tools {DOCKER_IMAGE_PATH} /foss_fim/tools/synthesize_test_cases.py -c PREV --fim-version {nice_name} --job-number {parallel_jobs} -m /data/test_cases/metrics_library/all_official_versions.csv", shell=True)
                 current_jobs[job_name]['container_state'] = 'running'
                 current_jobs[job_name]['status'] = 'Running Synthesize Test Cases'
 
@@ -194,6 +245,8 @@ def update_loop():
                 # Get container exit code, get the docker log, and then remove container
                 exit_code_raw = os.popen(f"docker inspect {job_name}" + " --format='{{.State.ExitCode}}'").read().splitlines()
 
+                print("------------------------")
+                print("Closing docker container, ready to save outputs for job : " + job_name + get_display_datetime(True)) 
                 print("Exit code")
                 print(exit_code_raw)
                 print(exit_code_raw[0])
@@ -218,17 +271,21 @@ def update_loop():
                 nice_name = current_jobs[job_name]['nice_name']
                 previous_major_fim_version = current_jobs[job_name]['previous_major_fim_version']
 
+                print("------------------------")
                 # Kick off the new job as a docker container to run eval plots
-                print(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_PATH}temp/{job_name}/:/foss_fim -w /foss_fim/tools {DOCKER_IMAGE_PATH} /foss_fim/tools/eval_plots.py -m /data/test_cases/metrics_library/all_official_versions.csv -w /data/test_cases/metrics_library/all_official_versions_viz -v {previous_major_fim_version} {nice_name} -sp")
-                subprocess.call(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_PATH}temp/{job_name}/:/foss_fim -w /foss_fim/tools {DOCKER_IMAGE_PATH} /foss_fim/tools/eval_plots.py -m /data/test_cases/metrics_library/all_official_versions.csv -w /data/test_cases/metrics_library/all_official_versions_viz -v {previous_major_fim_version} {nice_name} -sp", shell=True)
+                print("Running eval plots for job : " + job_name + get_display_datetime(True)) 
+                print(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim -w /foss_fim/tools {DOCKER_IMAGE_PATH} /foss_fim/tools/eval_plots.py -m /data/test_cases/metrics_library/all_official_versions.csv -w /data/test_cases/metrics_library/all_official_versions_viz -v {previous_major_fim_version} {nice_name} -sp")
+                subprocess.call(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim -w /foss_fim/tools {DOCKER_IMAGE_PATH} /foss_fim/tools/eval_plots.py -m /data/test_cases/metrics_library/all_official_versions.csv -w /data/test_cases/metrics_library/all_official_versions_viz -v {previous_major_fim_version} {nice_name} -sp", shell=True)
                 current_jobs[job_name]['container_state'] = 'running'
                 current_jobs[job_name]['status'] = 'Running Eval Plots'
+                print()
 
             # Once the Docker container is done, save outputs
             if current_jobs[job_name]['status'] == 'Running Eval Plots' and current_jobs[job_name]['container_state'] == 'exited':
                 # Get container exit code, get the docker log, and then remove container
                 exit_code_raw = os.popen(f"docker inspect {job_name}" + " --format='{{.State.ExitCode}}'").read().splitlines()
-
+                print("------------------------")
+                print("Running eval plots complete, ready to save outputs for job : " + job_name + get_display_datetime(True)) 
                 print("Exit code")
                 print(exit_code_raw)
                 print(exit_code_raw[0])
@@ -256,8 +313,10 @@ def update_loop():
                 parallel_jobs = current_jobs[job_name]['parallel_jobs']
 
                 # Kick off the new job as a docker container to run CatFIM
-                print(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_PATH}temp/{job_name}/:/foss_fim -w /foss_fim/tools {DOCKER_IMAGE_PATH} /foss_fim/tools/generate_categorical_fim.py -f {nice_name} -j {parallel_jobs}")
-                subprocess.call(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_PATH}temp/{job_name}/:/foss_fim -w /foss_fim/tools {DOCKER_IMAGE_PATH} /foss_fim/tools/generate_categorical_fim.py -f /data/previous_fim/{nice_name} -j {parallel_jobs}", shell=True)
+                print("------------------------")
+                print("Generating Categorial FIM for job : " + job_name + get_display_datetime(True)) 
+                print(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim -w /foss_fim/tools {DOCKER_IMAGE_PATH} /foss_fim/tools/generate_categorical_fim.py -f {nice_name} -j {parallel_jobs}")
+                subprocess.call(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim -w /foss_fim/tools {DOCKER_IMAGE_PATH} /foss_fim/tools/generate_categorical_fim.py -f /data/previous_fim/{nice_name} -j {parallel_jobs}", shell=True)
                 current_jobs[job_name]['container_state'] = 'running'
                 current_jobs[job_name]['status'] = 'Running Generate Categorical FIM'
 
@@ -266,6 +325,8 @@ def update_loop():
                 # Get container exit code, get the docker log, and then remove container
                 exit_code_raw = os.popen(f"docker inspect {job_name}" + " --format='{{.State.ExitCode}}'").read().splitlines()
 
+                print("------------------------")
+                print("Generate Categorial FIM is done for job : " + job_name + get_display_datetime(True)) 
                 print("Exit code")
                 print(exit_code_raw)
                 print(exit_code_raw[0])
@@ -296,7 +357,9 @@ def update_loop():
             # Trigger connector to transmit the outputs to the output_handler
             # If the output_handler is offline, it will keep retrying until the output_handler is online
             if current_jobs[job_name]['status'] == 'Ready to Save File' and (shared_data['current_saving_job'] == '' or shared_data['current_saving_job'] == current_jobs[job_name]):
-                print(f"{job_name} ready for output handler")
+
+                print("------------------------")
+                print(f"{job_name} ready for output handler"+ get_display_datetime(True)) 
 
                 shared_data['current_saving_job'] = current_jobs[job_name]
                 current_jobs[job_name]['is_actively_saving'] = True
@@ -325,21 +388,25 @@ def update_loop():
                         break
 
                 if is_done:
-                    print("output_handler finished, deleted temp source files and output files")
-                    temp_path = f"/data/temp/{job_name}"
+                    print("------------------------")
+                    print("output_handler finished, deleted temp source files and output files for job:" + job_name + get_display_datetime(True))
+                    temp_path = f"{DATA_WORKING_PATH}/{job_name}"
                     if os.path.isdir(temp_path):
                         shutil.rmtree(temp_path)
 
-                    outputs_path = f"/data/outputs/{current_jobs[job_name]['nice_name']}"
+                    outputs_path = f"[DATA_OUTPUT_PATH]/{current_jobs[job_name]['nice_name']}"
                     if current_jobs[job_name]['job_type'] == 'release':
                         outputs_path = f"/data/previous_fim/{current_jobs[job_name]['nice_name']}"
                         destination = f"/data/viz/{current_jobs[job_name]['nice_name']}"
 
                         if os.path.isdir(destination):
                             shutil.rmtree(destination)
-                        if os.path.isdir(f"{outputs_path}/aggregate_fim_outputs"): shutil.move(f"{outputs_path}/aggregate_fim_outputs", destination)
-                        if os.path.isdir(f"{outputs_path}/logs"): shutil.move(f"{outputs_path}/logs", f"{destination}/logs") 
-                        if os.path.isdir(f"/data/catfim/{current_jobs[job_name]['nice_name']}"): shutil.move(f"/data/catfim/{current_jobs[job_name]['nice_name']}", f"{destination}/catfim") 
+                        if os.path.isdir(f"{outputs_path}/aggregate_fim_outputs"): 
+                            shutil.move(f"{outputs_path}/aggregate_fim_outputs", destination)
+                        if os.path.isdir(f"{outputs_path}/logs"): 
+                            shutil.move(f"{outputs_path}/logs", f"{destination}/logs") 
+                        if os.path.isdir(f"/data/catfim/{current_jobs[job_name]['nice_name']}"): 
+                            shutil.move(f"/data/catfim/{current_jobs[job_name]['nice_name']}", f"{destination}/catfim") 
 
                     if os.path.isdir(outputs_path):
                         shutil.rmtree(outputs_path)
@@ -355,22 +422,24 @@ def update_loop():
                 
                     shared_data['current_saving_job'] = ''
                     current_jobs[job_name]['is_actively_saving'] = False
-                    print(f"{job_name} completed")
+                    print(f"{job_name} completed" + get_display_datetime(True))
                     # TODO: Insert Slack notification here for finished job
 
             # Remove job from list after it's been completed for more than 15 minutes
             if (current_jobs[job_name]['status'] == 'Completed' or current_jobs[job_name]['status'] == 'Error') and \
                 time.time() >= current_jobs[job_name]['time_started'] + current_jobs[job_name]['time_elapsed'] + 900:
-                print(f"{job_name} removed from job list")
+                print("------------------------")
+                print(f"{job_name} removed from job list" + get_display_datetime(True))
                 jobs_to_delete.append(job_name)
 
         for job in jobs_to_delete:
             del current_jobs[job]
 
         presets_list = []
-        for path, folders, files in os.walk(f"/data/inputs/huc_lists"):
+        for path, folders, files in os.walk(DATA_INPUTS_PATH):
             for file in files:
                 presets_list.append(file)
+        presets_list.sort()
 
         # Send updates to the connector and write job progress to file
         job_updates = [ {
@@ -399,14 +468,12 @@ sio = socketio.Client()
 def connect():
     sio.emit('updater_connected')
     shared_data['connected'] = True
-    print("Update Loop Connected!")
-    print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + " UTC")    
+    print("Update Loop Connected!" + get_display_datetime(True))
 
 @sio.event
 def disconnect():
     shared_data['connected'] = False
-    print('disconnected from server')
-    print(datetime.now().strftime("%d/%m/%Y %H:%M:%S") + " UTC")    
+    print('Disconnected from server' + get_display_datetime(True))
    
 
 @sio.on('add_job_to_queue')
@@ -507,7 +574,7 @@ def ws_remove_job_from_queue(data):
 # If the output_handler is offline, try the saving process again
 @sio.on('retry_saving_files')
 def ws_retry_saving_files():
-    print('saving files failed via output handler, retrying')
+    print('saving files failed via output handler, retrying.' + get_display_datetime(True))
     for job_name in current_jobs:
         if current_jobs[job_name]['status'] == "Saving File":
             for path in current_jobs[job_name]['output_files_saved']:
@@ -535,5 +602,11 @@ def ws_file_saved(data):
 
 
 if __name__ == '__main__':
-    sio.connect(NODE_CONNECTOR_URL)
-    update_loop()
+    try :
+        is_running = False;
+        sio.connect(NODE_CONNECTOR_URL)
+        update_loop()
+    except Exception as ex:
+        print("An error has occurred at main. Exception details: " )
+        print(ex)
+        exit()
