@@ -7,6 +7,7 @@ import json
 import shutil
 import logging
 import subprocess
+import sys, traceback
 from datetime import datetime
 
 import socketio
@@ -26,14 +27,6 @@ shared_data = {
     'current_saving_job': ''
 }
 
-def get_display_datetime(include_delimiter = False):
-    dt_output = ''
-    if include_delimiter:
-        dt_output += ' -- '
-    dt_output += datetime.now().strftime("%m/%d/%Y %H:%M:%S") + ' UTC'
-    return dt_output
-
-
 is_running = False;
 buffer_jobs = []
 buffer_remove_jobs = []
@@ -46,17 +39,29 @@ if os.path.exists(JOBS_CONTROL_FILE):
                 shared_data['current_saving_job'] = current_jobs[job_name]
 
 
+
+def get_display_datetime(include_delimiter = True):
+    dt_output = ''
+    if include_delimiter:
+        dt_output += ' -- '
+    dt_output += datetime.now().strftime("%m/%d/%Y %H:%M:%S") + ' UTC'
+    return dt_output
+
+
 # Get all the current running jobs from the list of docker containers, store that data in a dictionary
 # along with any other needed metadata (like if it's still running, doing post processing, copying outputs
 # to its destination, etc), and then update the websocket server of the status of the jobs.
 def update_loop():
+    
+    global is_running
+    
     while True:
         # If there are no current jobs, just check every 10 seconds till there is
         # but only if this is not the first time it comes in. Otherwise, the UI has a 10 second delay on showing that then
         # system is starting.
-        if len(current_jobs.keys()) == 0 and is_running:
-            sio.sleep(10)
-            
+        if len(current_jobs.keys()) == 0 and is_running == False:
+            sio.sleep(10)            
+        
         is_running = True
 
         while len(buffer_jobs) > 0:
@@ -87,7 +92,7 @@ def update_loop():
                     subprocess.call(f"docker container rm {job_name}", shell=True)
 
                 print("------------------------")
-                print("Output_handler finished, deleted temp source files and output files for job: " + job_name + get_display_datetime(True))
+                print("Output_handler finished, deleted temp source files and output files for job: " + job_name + get_display_datetime())
                 temp_path = f"{DATA_WORKING_PATH}{job_name}"
                 if os.path.isdir(temp_path):
                     shutil.rmtree(temp_path)
@@ -160,7 +165,7 @@ def update_loop():
 
                     # Clone github repo, with specific branch, to a temp folder
                     print("------------------------")
-                    print("Cloning repo for job: " + job_name + get_display_datetime(True))
+                    print("Cloning repo for job: " + job_name + get_display_datetime())
                     #print(f'cd {DATA_WORKING_PATH} && git clone -b {branch} {GITHUB_REPO} {job_name} && chmod -R 777 {job_name} && cp .env {job_name}/tools/.env')
                     #print(f'cd {DATA_WORKING_PATH} && git clone -b {branch} {GITHUB_REPO} {job_name} && chmod -R 777 {job_name}')
                     subprocess.call(f'cd ' + DATA_WORKING_PATH, shell=True)
@@ -169,7 +174,7 @@ def update_loop():
                     subprocess.call(f'git clone -b {branch} {GITHUB_REPO} {job_name} && chmod -R 777 {job_name}', shell=True)
 
                     # Kick off the new job as a docker container with the new cloned repo as the volume
-                    print("Docker run for job: " + job_name + get_display_datetime(True))                    
+                    print("Docker run for job: " + job_name + get_display_datetime())                    
                     #print(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim {DOCKER_IMAGE_PATH} fim_run.sh -u \"{hucs}\" -e {extent} -c {config_path} -n {nice_name} -o {'' if dev_run else '-p'} {'-v' if viz_run else ''} -j {parallel_jobs}")
                     
                     subprocess.call(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim {DOCKER_IMAGE_PATH} fim_run.sh -u \"{hucs}\" -e {extent} -c {config_path} -n {nice_name} -o {'' if dev_run else '-p'} {'-v' if viz_run else ''} -j {parallel_jobs}", shell=True)
@@ -178,12 +183,18 @@ def update_loop():
                     # Check to see if the job kicked off already.
                     try:
                         exit_code_raw = os.popen(f"docker inspect {job_name}" + " --format='{{.State.ExitCode}}'").read().splitlines()
+                        print(exit_code_raw[0])
                         if exit_code_raw[0] !=0:
                             print ("An error has occured. Exit Code: " + exit_code_raw[0])
+                            shared_data['current_saving_job'] = ''
+                            jobs_to_delete.append(job_name)
+                            exit()
                             
                     except Exception as ex:
-                        print ("An error has occured while launching a new process. Exception Details :")
+                        print("An error has occured while launching a new process. Exception Details :")
                         print(ex)
+                        shared_data['current_saving_job'] = ''
+                        jobs_to_delete.append(job_name)
                         exit()
                     
                     
@@ -199,7 +210,7 @@ def update_loop():
                 exit_code_raw = os.popen(f"docker inspect {job_name}" + " --format='{{.State.ExitCode}}'").read().splitlines()
                 
                 print("------------------------")
-                print("Docker container is ready for processing or saving outputs for job : " + job_name + get_display_datetime(True)) 
+                print("Docker container is ready for processing or saving outputs for job : " + job_name + get_display_datetime()) 
                 print("Exit code: " + exit_code_raw[0])
                 #try:
                 #    print(int(exit_code_raw[0]))
@@ -233,7 +244,7 @@ def update_loop():
                 
                 # Kick off the new job as a docker container to run eval metrics
                 print("------------------------")
-                print("Running synthesize_test_cases for job: " + job_name + get_display_datetime(True))
+                print("Running synthesize_test_cases for job: " + job_name + get_display_datetime())
                 print(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim -w /foss_fim/tools {DOCKER_IMAGE_PATH} /foss_fim/tools/synthesize_test_cases.py -c PREV --fim-version {nice_name} --job-number {parallel_jobs} -m /data/test_cases/metrics_library/all_official_versions.csv")
                 print()
                 subprocess.call(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim -w /foss_fim/tools {DOCKER_IMAGE_PATH} /foss_fim/tools/synthesize_test_cases.py -c PREV --fim-version {nice_name} --job-number {parallel_jobs} -m /data/test_cases/metrics_library/all_official_versions.csv", shell=True)
@@ -246,7 +257,7 @@ def update_loop():
                 exit_code_raw = os.popen(f"docker inspect {job_name}" + " --format='{{.State.ExitCode}}'").read().splitlines()
 
                 print("------------------------")
-                print("Closing docker container, ready to save outputs for job : " + job_name + get_display_datetime(True)) 
+                print("Closing docker container, ready to save outputs for job : " + job_name + get_display_datetime()) 
                 print("Exit code")
                 print(exit_code_raw)
                 print(exit_code_raw[0])
@@ -314,7 +325,7 @@ def update_loop():
 
                 # Kick off the new job as a docker container to run CatFIM
                 print("------------------------")
-                print("Generating Categorial FIM for job : " + job_name + get_display_datetime(True)) 
+                print("Generating Categorial FIM for job : " + job_name + get_display_datetime()) 
                 print(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim -w /foss_fim/tools {DOCKER_IMAGE_PATH} /foss_fim/tools/generate_categorical_fim.py -f {nice_name} -j {parallel_jobs}")
                 subprocess.call(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim -w /foss_fim/tools {DOCKER_IMAGE_PATH} /foss_fim/tools/generate_categorical_fim.py -f /data/previous_fim/{nice_name} -j {parallel_jobs}", shell=True)
                 current_jobs[job_name]['container_state'] = 'running'
@@ -326,7 +337,7 @@ def update_loop():
                 exit_code_raw = os.popen(f"docker inspect {job_name}" + " --format='{{.State.ExitCode}}'").read().splitlines()
 
                 print("------------------------")
-                print("Generate Categorial FIM is done for job : " + job_name + get_display_datetime(True)) 
+                print("Generate Categorial FIM is done for job : " + job_name + get_display_datetime()) 
                 print("Exit code")
                 print(exit_code_raw)
                 print(exit_code_raw[0])
@@ -359,7 +370,7 @@ def update_loop():
             if current_jobs[job_name]['status'] == 'Ready to Save File' and (shared_data['current_saving_job'] == '' or shared_data['current_saving_job'] == current_jobs[job_name]):
 
                 print("------------------------")
-                print(f"{job_name} ready for output handler"+ get_display_datetime(True)) 
+                print(f"{job_name} ready for output handler"+ get_display_datetime()) 
 
                 shared_data['current_saving_job'] = current_jobs[job_name]
                 current_jobs[job_name]['is_actively_saving'] = True
@@ -389,7 +400,7 @@ def update_loop():
 
                 if is_done:
                     print("------------------------")
-                    print("output_handler finished, deleted temp source files and output files for job:" + job_name + get_display_datetime(True))
+                    print("output_handler finished, deleted temp source files and output files for job:" + job_name + get_display_datetime())
                     temp_path = f"{DATA_WORKING_PATH}/{job_name}"
                     if os.path.isdir(temp_path):
                         shutil.rmtree(temp_path)
@@ -422,14 +433,14 @@ def update_loop():
                 
                     shared_data['current_saving_job'] = ''
                     current_jobs[job_name]['is_actively_saving'] = False
-                    print(f"{job_name} completed" + get_display_datetime(True))
+                    print(f"{job_name} completed" + get_display_datetime())
                     # TODO: Insert Slack notification here for finished job
 
             # Remove job from list after it's been completed for more than 15 minutes
             if (current_jobs[job_name]['status'] == 'Completed' or current_jobs[job_name]['status'] == 'Error') and \
                 time.time() >= current_jobs[job_name]['time_started'] + current_jobs[job_name]['time_elapsed'] + 900:
                 print("------------------------")
-                print(f"{job_name} removed from job list" + get_display_datetime(True))
+                print(f"{job_name} removed from job list" + get_display_datetime())
                 jobs_to_delete.append(job_name)
 
         for job in jobs_to_delete:
@@ -468,103 +479,112 @@ sio = socketio.Client()
 def connect():
     sio.emit('updater_connected')
     shared_data['connected'] = True
-    print("Update Loop Connected!" + get_display_datetime(True))
+    print("Update Loop Connected!" + get_display_datetime())
 
 @sio.event
 def disconnect():
     shared_data['connected'] = False
-    print('Disconnected from server' + get_display_datetime(True))
+    print('Disconnected from server' + get_display_datetime())
    
 
 @sio.on('add_job_to_queue')
 def ws_add_job_to_queue(data):
-    job_type = data['job_type']
-    if job_type == 'fim_run':
-        job_name = data['job_name']
-        branch = data['branch']
-        hucs = data['hucs']
-        parallel_jobs = data['parallel_jobs']
-        hucs_type = data['hucs_type']
-        extent = data['extent']
-        config_path = data['config_path']
-        dev_run = data['dev_run']
-        viz_run = data['viz_run']
+    
+    try:
+        job_type = data['job_type']
+        if job_type == 'fim_run':
+            job_name = data['job_name']
+            branch = data['branch']
+            hucs = data['hucs']
+            parallel_jobs = data['parallel_jobs']
+            hucs_type = data['hucs_type']
+            extent = data['extent']
+            config_path = data['config_path']
+            dev_run = data['dev_run']
+            viz_run = data['viz_run']
 
-        # This is a preset list instead of a custom list of hucs
-        if hucs_type == 0:
+            # This is a preset list instead of a custom list of hucs
+            if hucs_type == 0:
+                if os.path.exists(hucs):
+                    with open(hucs, "r") as preset_file:
+                        hucs_raw = preset_file.read().splitlines()
+                        parallel_jobs = len(hucs_raw)
+                        hucs_type = len(hucs_raw[0])
+
+            parallel_jobs = parallel_jobs if parallel_jobs <= MAX_ALLOWED_CPU_CORES else MAX_ALLOWED_CPU_CORES
+
+            buffer_jobs.append({
+                'job_type': job_type,
+                'job_name': job_name,
+                'branch': branch,
+                'hucs': hucs,
+                'parallel_jobs': parallel_jobs,
+                'hucs_type': hucs_type,
+                'extent': extent,
+                'config_path': config_path,
+                'dev_run': dev_run,
+                'viz_run': viz_run,
+                'nice_name': re.search(r"apijob_(.+)___.+", job_name).group(1),
+                'status': 'In Queue',
+                'time_started': 0,
+                'time_elapsed': 0,
+                'output_files_saved': {},
+                'total_output_files_length': 0,
+                'current_output_files_saved_length': 0,
+                'output_files_saved': {},
+                'container_state': 'running',
+                'exit_code': 0,
+                'is_actively_saving': False
+            })
+        elif job_type == 'release':
+            job_name = data['job_name']
+            hucs = data['hucs']
+            extent = data['extent']
+            branch = 'dev'
+            config_path = './foss_fim/config/params_calibrated.env'
+            dev_run = False
+            viz_run = True
+            previous_major_fim_version = data['previous_major_fim_version']
+
             if os.path.exists(hucs):
                 with open(hucs, "r") as preset_file:
                     hucs_raw = preset_file.read().splitlines()
                     parallel_jobs = len(hucs_raw)
                     hucs_type = len(hucs_raw[0])
 
-        parallel_jobs = parallel_jobs if parallel_jobs <= MAX_ALLOWED_CPU_CORES else MAX_ALLOWED_CPU_CORES
+            parallel_jobs = parallel_jobs if parallel_jobs <= MAX_ALLOWED_CPU_CORES else MAX_ALLOWED_CPU_CORES
 
-        buffer_jobs.append({
-            'job_type': job_type,
-            'job_name': job_name,
-            'branch': branch,
-            'hucs': hucs,
-            'parallel_jobs': parallel_jobs,
-            'hucs_type': hucs_type,
-            'extent': extent,
-            'config_path': config_path,
-            'dev_run': dev_run,
-            'viz_run': viz_run,
-            'nice_name': re.search(r"apijob_(.+)_apijob.+", job_name).group(1),
-            'status': 'In Queue',
-            'time_started': 0,
-            'time_elapsed': 0,
-            'output_files_saved': {},
-            'total_output_files_length': 0,
-            'current_output_files_saved_length': 0,
-            'output_files_saved': {},
-            'container_state': 'running',
-            'exit_code': 0,
-            'is_actively_saving': False
-        })
-    elif job_type == 'release':
-        job_name = data['job_name']
-        hucs = data['hucs']
-        extent = data['extent']
-        branch = 'dev'
-        config_path = './foss_fim/config/params_calibrated.env'
-        dev_run = False
-        viz_run = True
-        previous_major_fim_version = data['previous_major_fim_version']
-
-        if os.path.exists(hucs):
-            with open(hucs, "r") as preset_file:
-                hucs_raw = preset_file.read().splitlines()
-                parallel_jobs = len(hucs_raw)
-                hucs_type = len(hucs_raw[0])
-
-        parallel_jobs = parallel_jobs if parallel_jobs <= MAX_ALLOWED_CPU_CORES else MAX_ALLOWED_CPU_CORES
-
-        buffer_jobs.append({
-            'job_type': job_type,
-            'job_name': job_name,
-            'branch': branch,
-            'hucs': hucs,
-            'parallel_jobs': parallel_jobs,
-            'hucs_type': hucs_type,
-            'extent': extent,
-            'config_path': config_path,
-            'dev_run': dev_run,
-            'viz_run': viz_run,
-            'nice_name': re.search(r"apijob_(.+)_apijob.+", job_name).group(1),
-            'status': 'In Queue',
-            'time_started': 0,
-            'time_elapsed': 0,
-            'output_files_saved': {},
-            'total_output_files_length': 0,
-            'current_output_files_saved_length': 0,
-            'output_files_saved': {},
-            'container_state': 'running',
-            'exit_code': 0,
-            'is_actively_saving': False,
-            'previous_major_fim_version': previous_major_fim_version
-        })
+            buffer_jobs.append({
+                'job_type': job_type,
+                'job_name': job_name,
+                'branch': branch,
+                'hucs': hucs,
+                'parallel_jobs': parallel_jobs,
+                'hucs_type': hucs_type,
+                'extent': extent,
+                'config_path': config_path,
+                'dev_run': dev_run,
+                'viz_run': viz_run,
+                'nice_name': re.search(r"apijob_(.+)___.+", job_name).group(1),
+                'status': 'In Queue',
+                'time_started': 0,
+                'time_elapsed': 0,
+                'output_files_saved': {},
+                'total_output_files_length': 0,
+                'current_output_files_saved_length': 0,
+                'output_files_saved': {},
+                'container_state': 'running',
+                'exit_code': 0,
+                'is_actively_saving': False,
+                'previous_major_fim_version': previous_major_fim_version
+            })
+    except Exception as ex:
+        print("An error has occurred at main. Exception details: " )
+        print(ex)
+        print(traceback.format_exc())
+        print("Service stopped ")    
+        sio.emit('updater_service_error')
+    
 
 @sio.on('remove_job_from_queue')
 def ws_remove_job_from_queue(data):
@@ -574,7 +594,7 @@ def ws_remove_job_from_queue(data):
 # If the output_handler is offline, try the saving process again
 @sio.on('retry_saving_files')
 def ws_retry_saving_files():
-    print('saving files failed via output handler, retrying.' + get_display_datetime(True))
+    print('saving files failed via output handler, retrying.' + get_display_datetime())
     for job_name in current_jobs:
         if current_jobs[job_name]['status'] == "Saving File":
             for path in current_jobs[job_name]['output_files_saved']:
@@ -603,10 +623,12 @@ def ws_file_saved(data):
 
 if __name__ == '__main__':
     try :
-        is_running = False;
         sio.connect(NODE_CONNECTOR_URL)
+        is_running = False
         update_loop()
     except Exception as ex:
         print("An error has occurred at main. Exception details: " )
         print(ex)
-        exit()
+        print(traceback.format_exc())
+        print("Service stopped ")
+        sio.emit('updater_service_error')

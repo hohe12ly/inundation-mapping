@@ -1,249 +1,262 @@
 <html>
     <head>
-        <title>Cahaba API</title>
-
+        <title>Cahaba / FIM - JFS - FIM Job Scheduler</title>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.2/css/all.min.css" integrity="sha512-HK5fgLBL+xu6dm/Ii3z4xhlSUyZgTT9tuc/hSrtw6uzJOvgRr2a9jyxxT1ely+B+xFAmJKVSTbpM/CuL7qxO8w==" crossorigin="anonymous" />
         <link rel="preconnect" href="https://fonts.gstatic.com">
         <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
         <style>
-            html, body {
-                display: flex;
-                width: 100%;
-                height: 100%;
+				html, body {
+					 display: flex;
+					 width: 100%;
+					 height: 100%;
 
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-            }
+					 flex-direction: column;
+					 align-items: center;
+					 justify-content: center;
+				}
 
-            p, span, h1, h2, h3, h4, h5, h6, div, form, input, label, table {
-                font-family: 'Roboto', sans-serif;
-            }
+				p, span, h1, h2, h3, h4, h5, h6, div, form, input, label, table {
+					 font-family: 'Roboto', sans-serif;
+				}
 
-            #request-container {
-                display: flex;
-                width: 50%;
 
-                flex-direction: column;
+				#request-container {
+					 display: flex;
+					 width: 50%;
 
-                cursor: inherit;
-                opacity: inherit;
-            }
+					 flex-direction: column;
 
-            #request-container.loading {
-                cursor: progress;
-                opacity: 0.3;
-            }
+					 cursor: inherit;
+					 opacity: inherit;
+				}
 
-            #request-container.loading > div {
-                pointer-events: none;
-            }
+				#error_message {
+					display: flex;
+					padding: 20px;
+					color: red;
+					font-weight: bold;
+					text-align: center;
+					border: 3px solid green;
+				}
 
-            #request-tabs-container {
-                display: flex;
-                width: 100%;
-                height: 2rem;
 
-                justify-content: space-evenly;
+				#request-container.loading {
+					 cursor: progress;
+					 opacity: 0.3;
+				}
 
-                border: 2px solid black;
-            }
+				#request-container.loading > div {
+					 pointer-events: none;
+				}
 
-            .request-tab {
-                display: flex;
-                flex: 1;
-                height: 100%;
+				#request-tabs-container {
+					 display: flex;
+					 width: 100%;
+					 height: 2rem;
 
-                align-items: center;
-                justify-content: center;
+					 justify-content: space-evenly;
 
-                color: black;
-                background-color: white;
-                font-size: 0.9rem;
+					 border: 2px solid black;
+				}
 
-                transition: all 0.1s linear;
+				.request-tab {
+					 display: flex;
+					 flex: 1;
+					 height: 100%;
 
-                cursor: pointer;
-            }
+					 align-items: center;
+					 justify-content: center;
 
-            .request-tab:hover {
-                color: white;
-                background-color: rgb(99, 99, 99);
-            }
+					 color: black;
+					 background-color: white;
+					 font-size: 0.9rem;
 
-            .request-tab.active {
-                color: white;
-                background-color: rgb(56, 56, 56);
-            }
+					 transition: all 0.1s linear;
 
-            .request-form {
-                display: flex;
-                width: 100%;
-                min-height: 20rem;
-                flex-direction: column;
+					 cursor: pointer;
+				}
 
-                justify-content: space-between;
+				.request-tab:hover {
+					 color: white;
+					 background-color: rgb(99, 99, 99);
+				}
 
-                border: 2px solid black;
-                border-top: none;
-                border-radius: 0 0 8px 8px;
+				.request-tab.active {
+					 color: white;
+					 background-color: rgb(56, 56, 56);
+				}
 
-                margin: 0;
-                overflow: hidden;
-            }
+				.request-form {
+					 display: flex;
+					 width: 100%;
+					 min-height: 20rem;
+					 flex-direction: column;
 
-            .error-list {
-                display: flex;
-                width: 100%;
-                min-height: 4rem;
-                flex-direction: column;
+					 justify-content: space-between;
 
-                align-items: center;
-                justify-content: center;
+					 border: 2px solid black;
+					 border-top: none;
+					 border-radius: 0 0 8px 8px;
 
-                color: red;
-            }
+					 margin: 0;
+					 overflow: hidden;
+				}
 
-            .form-content {
-                display: flex;
-                flex-direction: column;
-                margin-bottom: 1rem;
+				.error-list {
+					 display: flex;
+					 width: 100%;
+					 min-height: 4rem;
+					 flex-direction: column;
 
-                padding: 1rem;
-            }
+					 align-items: center;
+					 justify-content: center;
 
-            .start-button {
-                display: flex;
-                width: 100%;
-                height: 4rem;
+					 color: red;
+				}
 
-                align-items: center;
-                justify-content: center;
+				.form-content {
+					 display: flex;
+					 flex-direction: column;
+					 margin-bottom: 1rem;
 
-                font-size: 2rem;
-                color: white;
-                background-color: #286ebe;
-                cursor: pointer;
+					 padding: 1rem;
+				}
 
-                transition: all 0.5s linear;
-                pointer-events: inherit;
-            }
-            
-            .start-button.not-connected {
-                background-color: #d11111;
-                pointer-events: none;
-            }
+				.start-button {
+					 display: flex;
+					 width: 100%;
+					 height: 4rem;
 
-            .start-button:hover {
-                background-color: #093568;
-            }
+					 align-items: center;
+					 justify-content: center;
 
-            #release-button {
-                display: flex;
-                width: 100%;
-                height: 100%;
+					 font-size: 2rem;
+					 color: white;
+					 background-color: #286ebe;
+					 cursor: pointer;
 
-                align-items: center;
-                justify-content: center;
+					 transition: all 0.5s linear;
+					 pointer-events: inherit;
+				}
 
-                font-size: 1.2rem;
-                color: white;
-                background-color: #28be99;
-                cursor: pointer;
+				.start-button.not-connected {
+					 background-color: #d11111;
+					 pointer-events: none;
+				}
 
-                transition: all 0.5s linear;
-                pointer-events: inherit;
-            }
+				.start-button:hover {
+					 background-color: #093568;
+				}
 
-            #release-button:hover, #release-button.active {
-                background-color: #09685b;
-            }
+				#release-button {
+					 display: flex;
+					 width: 100%;
+					 height: 100%;
 
-            .form-field {
-                display: flex;
-                width: 0;
+					 align-items: center;
+					 justify-content: center;
 
-                flex: 1;
-            }
+					 font-size: 1.2rem;
+					 color: white;
+					 background-color: #28be99;
+					 cursor: pointer;
 
-            .container-horizontal {
-                display: flex;
+					 transition: all 0.5s linear;
+					 pointer-events: inherit;
+				}
 
-                margin-bottom: 1rem;
-            }
+				#release-button:hover, #release-button.active {
+					 background-color: #09685b;
+				}
 
-            .input-with-label {
-                display: flex;
+				.form-field {
+					 display: flex;
+					 width: 0;
 
-                margin-right: 2rem;
-            }
+					 flex: 1;
+				}
 
-            .styled-table-wrapper {
-                display: none;
-                height: 12rem;
+				.container-horizontal {
+					 display: flex;
 
-                margin-top: 2rem;
+					 margin-bottom: 1rem;
+				}
 
-                overflow-y: auto;
-            }
+				.input-with-label {
+					 display: flex;
 
-            .styled-table {
-                border-collapse: collapse;
-                min-width: 10rem;
-                box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
-            }
+					 margin-right: 2rem;
+				}
 
-            .styled-table th {
-                position: sticky;
-                top: 0;
+				.styled-table-wrapper {
+					 display: none;
+					 height: 12rem;
 
-                background-color: #286ebe;
-                color: #ffffff;
-                font-weight: normal;
-                text-align: left;
-            }
+					 margin-top: 2rem;
 
-            .styled-table th,
-            .styled-table td {
-                padding: 1rem;
-            }
+					 overflow-y: auto;
+				}
 
-            .styled-table tbody tr {
-                border-bottom: thin solid #dddddd;
-            }
+				.styled-table {
+					 border-collapse: collapse;
+					 min-width: 10rem;
+					 box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+				}
 
-            .styled-table tbody tr:nth-of-type(even) {
-                background-color: #f3f3f3;
-            }
+				.styled-table th {
+					 position: sticky;
+					 top: 0;
 
-            .styled-table tbody tr:last-of-type {
-                border-bottom: 2px solid #286ebe;
-            }
+					 background-color: #286ebe;
+					 color: #ffffff;
+					 font-weight: normal;
+					 text-align: left;
+				}
 
-            .styled-table tbody tr.job-completed {
-                font-weight: bold;
-                color: #2fd107;
-            }
-            .styled-table tbody tr.job-error {
-                font-weight: bold;
-                color: #d10707;
-            }
+				.styled-table th,
+				.styled-table td {
+					 padding: 1rem;
+				}
 
-            .cancel-button {
-                color: red;
-                cursor: pointer;
-                font-size: 1.5rem;
-            }
+				.styled-table tbody tr {
+					 border-bottom: thin solid #dddddd;
+				}
 
-            .info-button {
-                color: #286ebe;
-                cursor: pointer;
-                font-size: 1.5rem;
-            }
+				.styled-table tbody tr:nth-of-type(even) {
+					 background-color: #f3f3f3;
+				}
+
+				.styled-table tbody tr:last-of-type {
+					 border-bottom: 2px solid #286ebe;
+				}
+
+				.styled-table tbody tr.job-completed {
+					 font-weight: bold;
+					 color: #2fd107;
+				}
+				.styled-table tbody tr.job-error {
+					 font-weight: bold;
+					 color: #d10707;
+				}
+
+				.cancel-button {
+					 color: red;
+					 cursor: pointer;
+					 font-size: 1.5rem;
+				}
+
+				.info-button {
+					 color: #286ebe;
+					 cursor: pointer;
+					 font-size: 1.5rem;
+				}
+				
+	  
         </style>
     </head>
     <body>
-        <h1>FJS - FIM Job Scheduler (API) - Dev2 (change to variable)</h1>
+        <h1>FJS - FIM Job Scheduler</h1>
+		  <div id="error_message" style="display: None;">An internal error with the processing service has occured. Sorry, jobs can not be processed at this time.</div>
         <div id="request-container">
             <div id="request-tabs-container">
                 <div class="request-tab" onclick="selectForm(event, 'release')">Release</div>
@@ -347,7 +360,7 @@
         <script type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.min.js"></script>
 
         <script type="text/javascript">
-            const socket = io.connect('{{node_connector_url}}')
+            const socket = io.connect('{{node_gui_connector_url}}')
 
             document.addEventListener("DOMContentLoaded", () => {
                 // Socket.io related code
@@ -370,6 +383,7 @@
                 socket.on('client_update', ({jobUpdates, presetsList}) => {
                     if(document.querySelector('#presets-list').innerHTML === '') {
                         let presetsSelectBody = ''
+								presetsSelectBody += `<option value="not_selected">Please select an input list</option>`
                         if (Object.keys(presetsList).length === 0)
                             document.querySelector('#presets-list').style.display = 'none'
                         else
@@ -441,6 +455,12 @@
                 socket.on('job_canceled', () => {
                     console.log("Job has been cancelled")
                 })
+					 
+                socket.on('service_error', () => {
+						  document.querySelector('#request-container').style.display = 'none'
+						  document.querySelector('#error_message').style.display = 'block'
+
+                })					 
             })
 
             const submitRequest = requestName => {
@@ -456,9 +476,14 @@
                     const configuration =  Array.from(document.querySelectorAll("input[name='configuration']")).filter(c => c.checked)[0].value
                     const extents =  Array.from(document.querySelectorAll("input[name='extent']")).filter(c => c.checked).map(c => c.value)
 
-                    if (job_name === '') validation_errors.push('Job Name Cannot Be Empty')
-                    if (preset === 'custom' && hucs === '') validation_errors.push('Huc(s) Cannot Be Empty')
-                    if (git_branch === '') validation_errors.push('Git Branch Cannot Be Empty')
+                    if (job_name === '')
+								validation_errors.push('Job Name Cannot Be Empty')
+                    if (preset === 'custom' && hucs === '') 
+								validation_errors.push('Huc(s) Cannot Be Empty')
+						  if (preset === 'not_selected')
+								validation_errors.push('Input list needs to be selected')
+                    if (git_branch === '') 
+								validation_errors.push('Git Branch Cannot Be Empty')
 
                     if (validation_errors.length > 0){
                         document.querySelector('#fim-run-errors').innerHTML = validation_errors.map(e => `<span>${e}</span>`).join('')

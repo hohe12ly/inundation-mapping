@@ -4,7 +4,7 @@ from datetime import datetime
 
 import socketio
 
-NODE_CONNECTOR_URL = os.environ.get('NODE_CONNECTOR_URL')
+NODE_OUTPUT_HANDLER_URL = os.environ.get('NODE_OUTPUT_HANDLER_URL')
 
 def handle_outputs(data):
     job_name = data['job_name']
@@ -48,4 +48,5 @@ def disconnect():
 def ws_new_job_outputs(data):
     handle_outputs(data)
 
-sio.connect("http://fim_node_connector:4420")
+#sio.connect("http://fim_node_connector:4420")
+sio.connect(NODE_OUTPUT_HANDLER_URL)
