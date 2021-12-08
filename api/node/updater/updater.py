@@ -27,17 +27,29 @@ shared_data = {
     'current_saving_job': ''
 }
 
+active_statuses = [
+    'In Progress',
+    'Ready for Synthesize Test Cases',
+    'Running Synthesize Test Cases',
+    'Ready for Eval Plots',
+    'Running Eval Plots',
+    'Ready for Generate Categorical FIM',
+    'Running Generate Categorical FIM',
+    'Ready to Save File',
+    'Saving File'
+]
+
 is_running = False;
 buffer_jobs = []
 buffer_remove_jobs = []
 current_jobs = {}
+
 if os.path.exists(JOBS_CONTROL_FILE):
     with open(JOBS_CONTROL_FILE) as f:
         current_jobs = json.load(f)
         for job_name in current_jobs.keys():
             if 'is_actively_saving' in current_jobs[job_name] and current_jobs[job_name]['is_actively_saving'] == True:
                 shared_data['current_saving_job'] = current_jobs[job_name]
-
 
 
 def get_display_datetime(include_delimiter = True):
@@ -84,6 +96,7 @@ def update_loop():
             if job_name in container_states:
                 current_jobs[job_name]['container_state'] = container_states[job_name]
 
+            # ************************************************************************************************
             # If the user chooses to cancel the job early
             if current_jobs[job_name]['status'] == 'Cancelled':
                 # If the docker container is running, stop and remove it
@@ -103,17 +116,6 @@ def update_loop():
                 
                 jobs_to_delete.append(job_name)
 
-            active_statuses = [
-                'In Progress',
-                'Ready for Synthesize Test Cases',
-                'Running Synthesize Test Cases',
-                'Ready for Eval Plots',
-                'Running Eval Plots',
-                'Ready for Generate Categorical FIM',
-                'Running Generate Categorical FIM',
-                'Ready to Save File',
-                'Saving File'
-            ]
             # TODO: separate list for queuing so that one job can save and another run
 
             # Update the time elapsed for all jobs that are currently in progress or saving outputs
@@ -124,6 +126,7 @@ def update_loop():
 
             # Once resources recome available, start a new job that is in queue
 
+            # ************************************************************************************************
             if current_jobs[job_name]['status'] == 'In Queue':
                 current_jobs[job_name]['time_started'] = time.time()
 
@@ -165,44 +168,45 @@ def update_loop():
 
                     # Clone github repo, with specific branch, to a temp folder
                     print("------------------------")
-                    print("Cloning repo for job: " + job_name + get_display_datetime())
-                    #print(f'cd {DATA_WORKING_PATH} && git clone -b {branch} {GITHUB_REPO} {job_name} && chmod -R 777 {job_name} && cp .env {job_name}/tools/.env')
-                    #print(f'cd {DATA_WORKING_PATH} && git clone -b {branch} {GITHUB_REPO} {job_name} && chmod -R 777 {job_name}')
-                    subprocess.call(f'cd ' + DATA_WORKING_PATH, shell=True)
+                    #print("Cloning repo for job: " + job_name + get_display_datetime())
                     
-                    #subprocess.call(f'git clone -b {branch} {GITHUB_REPO} {job_name} && chmod -R 777 {job_name} && cp .env {job_name}/tools/.env', shell=True)
-                    subprocess.call(f'git clone -b {branch} {GITHUB_REPO} {job_name} && chmod -R 777 {job_name}', shell=True)
-
+                    print(f'cd {DATA_WORKING_PATH} && git clone -b {branch} {GITHUB_REPO} {job_name} && chmod -R 777 {job_name} && cp .env {job_name}/tools/.env')
+                    
+                    subprocess.call(f'cd {DATA_WORKING_PATH} && git clone -b {branch} {GITHUB_REPO} {job_name} && chmod -R 777 {job_name}&& cp .env {job_name}/tools/.env', shell=True)
+                    
                     # Kick off the new job as a docker container with the new cloned repo as the volume
-                    print("Docker run for job: " + job_name + get_display_datetime())                    
-                    #print(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim {DOCKER_IMAGE_PATH} fim_run.sh -u \"{hucs}\" -e {extent} -c {config_path} -n {nice_name} -o {'' if dev_run else '-p'} {'-v' if viz_run else ''} -j {parallel_jobs}")
+                    #print("Docker start for job: " + job_name + get_display_datetime())            
+                    
+                    print(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim {DOCKER_IMAGE_PATH} fim_run.sh -u \"{hucs}\" -e {extent} -c {config_path} -n {nice_name} -o {'' if dev_run else '-p'} {'-v' if viz_run else ''} -j {parallel_jobs}")
                     
                     subprocess.call(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim {DOCKER_IMAGE_PATH} fim_run.sh -u \"{hucs}\" -e {extent} -c {config_path} -n {nice_name} -o {'' if dev_run else '-p'} {'-v' if viz_run else ''} -j {parallel_jobs}", shell=True)
                     
-                    
-                    # Check to see if the job kicked off already.
+                    # Check to see if the job kicked off 
                     try:
                         exit_code_raw = os.popen(f"docker inspect {job_name}" + " --format='{{.State.ExitCode}}'").read().splitlines()
-                        print(exit_code_raw[0])
-                        if exit_code_raw[0] !=0:
-                            print ("An error has occured. Exit Code: " + exit_code_raw[0])
-                            shared_data['current_saving_job'] = ''
-                            jobs_to_delete.append(job_name)
-                            exit()
+                        #print(".." + exit_code_raw + "..")
+                        if exit_code_raw[0] != "0":
+                            print("An error has occured. Exit Code: " + exit_code_raw[0])
+                            #current_jobs[job_name]['status'] == 'Error'
+                            #shared_data['current_saving_job'] = ''
+                            sio.emit('updater_service_error')
+                            sys.exit();
+                        else:
+                            current_jobs[job_name]['status'] = 'In Progress'
                             
+                            # The docker container will run for a while now. We will keep polling it until it is done.
+                            print("Processing job: " + job_name + get_display_datetime(True))
+                           
                     except Exception as ex:
                         print("An error has occured while launching a new process. Exception Details :")
                         print(ex)
+                        current_jobs[job_name]['status'] == 'Error'
                         shared_data['current_saving_job'] = ''
-                        jobs_to_delete.append(job_name)
-                        exit()
+                        sio.emit('updater_service_error')
+                        sys.exit();
                     
-                    
-                    current_jobs[job_name]['status'] = 'In Progress'
-                    
-                    # The docker container will run for a while now. We will keep polling it until it is done.
-                    print("Processing job: " + job_name + get_display_datetime(True))
 
+            # ************************************************************************************************
             # Once the Docker container is done, either save outputs or run release
             if current_jobs[job_name]['status'] == 'In Progress' and current_jobs[job_name]['container_state'] == 'exited':
 
@@ -232,6 +236,8 @@ def update_loop():
                 elif current_jobs[job_name]['job_type'] == 'release':
                     current_jobs[job_name]['status'] = 'Ready for Synthesize Test Cases'
 
+
+            # ************************************************************************************************
             if current_jobs[job_name]['status'] == 'Ready for Synthesize Test Cases':
                 job_name = current_jobs[job_name]['job_name']
                 nice_name = current_jobs[job_name]['nice_name']
@@ -251,6 +257,7 @@ def update_loop():
                 current_jobs[job_name]['container_state'] = 'running'
                 current_jobs[job_name]['status'] = 'Running Synthesize Test Cases'
 
+            # ************************************************************************************************
             # Once the Docker container is done, save outputs
             if current_jobs[job_name]['status'] == 'Running Synthesize Test Cases' and current_jobs[job_name]['container_state'] == 'exited':
                 # Get container exit code, get the docker log, and then remove container
@@ -277,6 +284,7 @@ def update_loop():
                 current_jobs[job_name]['total_output_files_length'] = len(current_jobs[job_name]['output_files_saved'].keys())
                 current_jobs[job_name]['status'] = 'Ready for Eval Plots'
 
+            # ************************************************************************************************
             if current_jobs[job_name]['status'] == 'Ready for Eval Plots':
                 job_name = current_jobs[job_name]['job_name']
                 nice_name = current_jobs[job_name]['nice_name']
@@ -291,6 +299,7 @@ def update_loop():
                 current_jobs[job_name]['status'] = 'Running Eval Plots'
                 print()
 
+            # ************************************************************************************************
             # Once the Docker container is done, save outputs
             if current_jobs[job_name]['status'] == 'Running Eval Plots' and current_jobs[job_name]['container_state'] == 'exited':
                 # Get container exit code, get the docker log, and then remove container
@@ -318,6 +327,7 @@ def update_loop():
 
                 current_jobs[job_name]['status'] = 'Ready for Generate Categorical FIM'
 
+            # ************************************************************************************************
             if current_jobs[job_name]['status'] == 'Ready for Generate Categorical FIM':
                 job_name = current_jobs[job_name]['job_name']
                 nice_name = current_jobs[job_name]['nice_name']
@@ -331,6 +341,7 @@ def update_loop():
                 current_jobs[job_name]['container_state'] = 'running'
                 current_jobs[job_name]['status'] = 'Running Generate Categorical FIM'
 
+            # ************************************************************************************************
             # Once the Docker container is done, save outputs
             if current_jobs[job_name]['status'] == 'Running Generate Categorical FIM' and current_jobs[job_name]['container_state'] == 'exited':
                 # Get container exit code, get the docker log, and then remove container
@@ -365,9 +376,11 @@ def update_loop():
                 current_jobs[job_name]['total_output_files_length'] = len(current_jobs[job_name]['output_files_saved'].keys())
                 current_jobs[job_name]['status'] = 'Ready to Save File'
     
+    
+            # ************************************************************************************************    
             # Trigger connector to transmit the outputs to the output_handler
             # If the output_handler is offline, it will keep retrying until the output_handler is online
-            if current_jobs[job_name]['status'] == 'Ready to Save File' and (shared_data['current_saving_job'] == '' or shared_data['current_saving_job'] == current_jobs[job_name]):
+            if (current_jobs[job_name]['status'] == 'Ready to Save File') and (shared_data['current_saving_job'] == '' or shared_data['current_saving_job'] == current_jobs[job_name]):
 
                 print("------------------------")
                 print(f"{job_name} ready for output handler"+ get_display_datetime()) 
@@ -389,6 +402,8 @@ def update_loop():
                         })
                 current_jobs[job_name]['status'] = 'Saving File'
             
+            
+            # ************************************************************************************************            
             # Once the output_handler is done getting the outputs and the connector deletes the temp repo source,
             # mark as completed
             if current_jobs[job_name]['status'] == 'Saving File':
@@ -436,6 +451,7 @@ def update_loop():
                     print(f"{job_name} completed" + get_display_datetime())
                     # TODO: Insert Slack notification here for finished job
 
+            # ************************************************************************************************
             # Remove job from list after it's been completed for more than 15 minutes
             if (current_jobs[job_name]['status'] == 'Completed' or current_jobs[job_name]['status'] == 'Error') and \
                 time.time() >= current_jobs[job_name]['time_started'] + current_jobs[job_name]['time_elapsed'] + 900:
@@ -594,7 +610,10 @@ def ws_remove_job_from_queue(data):
 # If the output_handler is offline, try the saving process again
 @sio.on('retry_saving_files')
 def ws_retry_saving_files():
-    print('saving files failed via output handler, retrying.' + get_display_datetime())
+
+    if (len(current_jobs) > 0):
+        print('saving files failed via output handler, retrying.' + get_display_datetime())
+        
     for job_name in current_jobs:
         if current_jobs[job_name]['status'] == "Saving File":
             for path in current_jobs[job_name]['output_files_saved']:
