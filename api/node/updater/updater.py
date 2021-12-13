@@ -177,18 +177,35 @@ def update_loop():
                     # Kick off the new job as a docker container with the new cloned repo as the volume
                     #print("Docker start for job: " + job_name + get_display_datetime())            
                     
-                    print(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim {DOCKER_IMAGE_PATH} fim_run.sh -u \"{hucs}\" -e {extent} -c {config_path} -n {nice_name} -o {'' if dev_run else '-p'} {'-v' if viz_run else ''} -j {parallel_jobs}")
+                    docker_run_str = f"docker run -d --name " + job_name + \
+                                     " -v " + DATA_PATH + ":/data/" + \
+                                     " -v " + DATA_WORKING_PATH + "/" + job_name + "/:/foss_fim"
+                    docker_run_str += " " + DOCKER_IMAGE_PATH
+                    docker_run_str += " fim_run.sh -u \"" + hucs + "\""
+                    docker_run_str += " -e " + extent
+                    docker_run_str += " -c " + config_path
+                    docker_run_str += " -n " + nice_name
+                    docker_run_str += " -o"
+                    if ! dev_run:
+                        docker_run_str += " -p"
+                    if viz_run:
+                        docker_run_str += " -v"
+                    docker_run_str += " -j " + str(parallel_jobs)
                     
-                    subprocess.call(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim {DOCKER_IMAGE_PATH} fim_run.sh -u \"{hucs}\" -e {extent} -c {config_path} -n {nice_name} -o {'' if dev_run else '-p'} {'-v' if viz_run else ''} -j {parallel_jobs}", shell=True)
+                    print(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim {DOCKER_IMAGE_PATH} fim_run.sh -u \"{hucs}\" -e {extent} -c {config_path} -n {nice_name} -o {'' if dev_run else '-p'} {'-v' if viz_run else ''} -j {parallel_jobs}")
+                    print(docker_run_str)
+                    
+                    #subprocess.call(f"docker run -d --name {job_name} -v {DATA_PATH}:/data/ -v {DATA_WORKING_PATH}/{job_name}/:/foss_fim {DOCKER_IMAGE_PATH} fim_run.sh -u \"{hucs}\" -e {extent} -c {config_path} -n {nice_name} -o {'' if dev_run else '-p'} {'-v' if viz_run else ''} -j {parallel_jobs}", shell=True)
+                    subprocess.call(docker_run_str, shell=True)
                     
                     # Check to see if the job kicked off 
                     try:
                         exit_code_raw = os.popen(f"docker inspect {job_name}" + " --format='{{.State.ExitCode}}'").read().splitlines()
-                        #print(".." + exit_code_raw + "..")
+                        print(".." + exit_code_raw + "..")
                         if exit_code_raw[0] != "0":
                             print("An error has occured. Exit Code: " + exit_code_raw[0])
-                            #current_jobs[job_name]['status'] == 'Error'
-                            #shared_data['current_saving_job'] = ''
+                            current_jobs[job_name]['status'] == 'Error'
+                            shared_data['current_saving_job'] = ''
                             sio.emit('updater_service_error')
                             sys.exit();
                         else:
@@ -202,7 +219,7 @@ def update_loop():
                         print(ex)
                         current_jobs[job_name]['status'] == 'Error'
                         shared_data['current_saving_job'] = ''
-                        sio.emit('updater_service_error')
+                        sio.emit('updater_servce_error')
                         sys.exit();
                     
 

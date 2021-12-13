@@ -43,8 +43,8 @@ def ws_conn():
 
 @socketio.on('disconnect')
 def ws_disconn():
-    if request.sid not in calling_members.values():
-        print('Web Service Disconnect: sid: ' + request.sid +  get_display_datetime())
+    #if request.sid not in calling_members.values():
+    print('Web Service Disconnect: sid: ' + request.sid +  get_display_datetime())
     emit('is_connected', False)
 
 @socketio.on('update')
