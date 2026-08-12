@@ -1,0 +1,69 @@
+# Base Image that has GDAL, PROJ, etc
+#FROM osgeo/gdal:ubuntu-full-3.1.2
+dataDir=/home/yxl/test/fim3 #ARG dataDir=/data
+projectDir=/srv/test/cahaba #ARG projectDir=/foss_fim
+#odir=/dev/shm/fim3
+odir=/home/yxl/test/fim3/cache
+#odir=/srv/test/cahaba/ornl
+depDir=/srv #ARG depDir=/dependencies
+export inputDataDir=$dataDir/inputs #ENV inputDataDir=$dataDir/inputs
+export outputDataDir=$odir/outputs #ENV outputDataDir=$dataDir/outputs
+export srcDir=$projectDir/src #ENV srcDir=$projectDir/src
+#export taudemDir=/srv/taudem/TauDEM-5.3.7 #ENV taudemDir=$depDir/taudem/bin
+export taudemDir=/srv/taudem/TauDEM/bin #ENV taudemDir=$depDir/taudem/bin
+export taudemDir2=/srv/taudem/TauDEM-K #ENV taudemDir2=$depDir/taudem_accelerated_flowDirections/taudem/build/bin
+
+mkdir -p $odir
+
+## ADDING FIM GROUP ##
+# ARG GroupID=1370800120
+# ARG GroupName=apd_dev
+#ARG GroupID=1370800235
+#ARG GroupName=fim
+#RUN addgroup --gid $GroupID $GroupName
+#ENV GID=$GroupID
+#ENV GN=$GroupName
+
+#RUN mkdir -p $depDir
+#COPY --from=builder $depDir $depDir
+
+
+#RUN apt update --fix-missing && apt install -y p7zip-full python3-pip time mpich=3.3.2-2build1 parallel=20161222-1.1 libgeos-dev=3.8.0-1build1 expect=5.45.4-2build1
+
+#RUN DEBIAN_FRONTEND=noninteractive apt install -y grass=7.8.2-1build3 grass-doc=7.8.2-1build3
+
+### GRASS install on CentOS ###
+# conda has a grass install, but that is for MacOS
+# centos 8 has grass, but it conflicts with conda on spatial libs, so the following does NOT work
+# sudo yum --enablerepo epel install grass-devel grass
+# check my grass_compile.sh to compile from source and install
+# then add grass path to PATH LD_LIBRARY_PATH in /srv/sw/env.fim3
+
+### conda env install ###
+## default fim3 env create doesn't work, causing clip_vectors_to_wbd.py fail
+## due to geopandas 0.10 & pandas 1.3.3 error on overlay function symmetric_difference.
+## need to use geopandas 0.9
+# conda create --prefix /srv/sw/conda.evns/fim3 --clone base
+# conda activate /srv/sw/conda.evns/fim3
+# conda install rasterstats richdem tgdm seaborn python-dotenv natsort memory_profiler pygeos
+# pip3 install grass-session
+#source /srv/sw/env.fim3 # in fim_run.sh though
+
+#RUN apt auto-remove
+
+## adding environment variables for numba and python ##
+export LC_ALL=C.UTF-8 #ENV LC_ALL=C.UTF-8
+export LANG=C.UTF-8 #ENV LANG=C.UTF-8
+export PYTHONUNBUFFERED=TRUE #ENV PYTHONUNBUFFERED=TRUE
+
+## ADD TO PATHS ##
+export PATH=$projectDir:$PATH #ENV PATH="$projectDir:${PATH}"
+
+## install python 3 modules ##
+#COPY Pipfile .
+#COPY Pipfile.lock .
+#RUN pip3 install pipenv && PIP_NO_CACHE_DIR=off PIP_NO_BINARY=shapely,pygeos pipenv install --system --deploy --ignore-pipfile
+
+## RUN UMASK TO CHANGE DEFAULT PERMISSIONS ##
+#ADD ./src/entrypoint.sh /
+#ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]

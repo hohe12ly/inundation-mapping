@@ -1,0 +1,960 @@
+
+##########################################################################
+Parameter Values
+extent=FR
+agree_DEM_buffer=70
+wbd_buffer=5000
+ms_buffer_dist=7000
+lakes_buffer_dist_meters=20
+negative_burn_value=1000
+max_split_distance_meters=1500
+mannings_n=/srv/test/cahaba/src/../config/mannings_calibrated.json
+stage_min_meters=0
+stage_interval_meters=0.3048
+stage_max_meters=25
+slope_min=0.001
+ms_buffer_dist=7000
+ncores_gw=8
+ncores_fd=8
+default_max_jobs=1
+memfree=0G
+##########################################################################
+
+##########################################################################
+Generate temporary DEM for 11140302
+##########################################################################
+Sun Jan 22 09:27:02 UTC 2023
+Creating output file that is 61909P x 37872L.
+Processing /home/yxl/test/fim3/huc8vrt/11140302_fathom3m.vrt [1/1] : 0Using internal nodata values (e.g. -9999) for image /home/yxl/test/fim3/huc8vrt/11140302_fathom3m.vrt.
+Copying nodata values from source /home/yxl/test/fim3/huc8vrt/11140302_fathom3m.vrt to destination /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/11140302_fathom3m.tif.
+...10...20...30...40...50...60...70...80...90...100 - done.
+TTTime 0.vrt2dem = 405 sec
+Cumulative_Time = 405sec
+
+##########################################################################
+Get WBD 11140302
+##########################################################################
+Sun Jan 22 09:33:47 UTC 2023
+TTTime 1.wbd = 9 sec
+Cumulative_Time = 414sec
+
+##########################################################################
+Get Vector Layers and Subset 11140302
+##########################################################################
+Sun Jan 22 09:33:56 UTC 2023
+/srv/sw/conda.evns/fim3/lib/python3.7/site-packages/geopandas/_compat.py:110: UserWarning: The Shapely GEOS version (3.8.0-CAPI-1.13.1 ) is incompatible with the GEOS version PyGEOS was compiled with (3.8.1-CAPI-1.13.3). Conversions between both will be slow.
+  shapely_geos_version, geos_capi_version_string
+Subsetting NWM Lakes for HUC8 11140302
+Subsetting NLD levee lines for HUC8 11140302
+Subsetting NHD Headwater Points for HUC8 11140302
+Querying NHD Streams for HUC8 11140302
+/srv/test/cahaba/src/clip_vectors_to_wbd.py:94: UserWarning: `keep_geom_type=True` in overlay resulted in 1 dropped geometries of different geometry types than df1 has. Set `keep_geom_type=False` to retain all geometries
+  threshold_segments = gpd.overlay(nhd_streams, wbd_buffer, how='symmetric_difference')
+Subsetting NWM Catchments for HUC8 11140302
+Subsetting NWM Streams and deriving headwaters for HUC8 11140302
+TTTime 2.v_subset = 42 sec
+Cumulative_Time = 456sec
+
+##########################################################################
+Clip WBD8
+##########################################################################
+Sun Jan 22 09:34:38 UTC 2023
+TTTime 3.wbd8 = 13 sec
+Cumulative_Time = 469sec
+
+##########################################################################
+Clip DEM 11140302
+##########################################################################
+Sun Jan 22 09:34:51 UTC 2023
+Creating output file that is 54416P x 25955L.
+Processing /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/11140302_fathom3m.tif [1/1] : 0Using internal nodata values (e.g. -9999) for image /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/11140302_fathom3m.tif.
+Copying nodata values from source /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/11140302_fathom3m.tif to destination /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/dem_meters.tif.
+...10...20...30...40...50...60...70...80...90...100 - done.
+TTTime 4.dem = 231 sec
+Cumulative_Time = 700sec
+
+##########################################################################
+Get DEM Metadata 11140302
+##########################################################################
+Sun Jan 22 09:38:42 UTC 2023
+
+##########################################################################
+Rasterize all NLD multilines using zelev vertices
+##########################################################################
+Sun Jan 22 09:38:42 UTC 2023
+0...10...20...30...40...50...60...70...80...90...100 - done.
+TTTime 5.r_nld = 27 sec
+Cumulative_Time = 727sec
+
+##########################################################################
+Rasterize Reach Boolean 11140302
+##########################################################################
+Sun Jan 22 09:39:09 UTC 2023
+0...10...20...30...40...50...60...70...80...90...100 - done.
+TTTime 6.r_fl = 21 sec
+Cumulative_Time = 748sec
+
+##########################################################################
+Rasterize NHD Headwaters 11140302
+##########################################################################
+Sun Jan 22 09:39:30 UTC 2023
+0...10...20...30...40...50...60...70...80...90...100 - done.
+TTTime 7.r_hw = 21 sec
+Cumulative_Time = 769sec
+
+##########################################################################
+Raster NWM Catchments 11140302
+##########################################################################
+Sun Jan 22 09:39:51 UTC 2023
+0...10...20...30...40...50...60...70...80...90...100 - done.
+TTTime 9.r_nwmcat = 31 sec
+Cumulative_Time = 800sec
+
+##########################################################################
+Burn nld levees into dem & convert nld elev to meters (*Overwrite dem_meters.tif output) 11140302
+##########################################################################
+Sun Jan 22 09:40:22 UTC 2023
+TTTime 10.b_nld = 89 sec
+Cumulative_Time = 889sec
+
+##########################################################################
+Creating AGREE DEM using 70 meter buffer
+##########################################################################
+Sun Jan 22 09:41:51 UTC 2023
+WARNING: Precision loss: Float32 can not preserve the DCELL precision of
+         raster <proximity@temporary_mapset>. This can be avoided by using
+         Float64
+WARNING: Forcing raster export
+WARNING: Precision loss: Float32 can not preserve the DCELL precision of
+         raster <allocation@temporary_mapset>. This can be avoided by using
+         Float64
+WARNING: Forcing raster export
+GRASSDISK /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/temp_work 8.3G
+WARNING: Precision loss: Float32 can not preserve the DCELL precision of
+         raster <proximity@temporary_mapset>. This can be avoided by using
+         Float64
+WARNING: Forcing raster export
+WARNING: Precision loss: Float32 can not preserve the DCELL precision of
+         raster <allocation@temporary_mapset>. This can be avoided by using
+         Float64
+WARNING: Forcing raster export
+GRASSDISK /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/temp_work 9.4G
+TTTime 11.agree = 1336 sec
+Cumulative_Time = 2225sec
+
+##########################################################################
+Pit remove Burned DEM 11140302
+##########################################################################
+Sun Jan 22 10:04:07 UTC 2023
+c Program name       = RichDEM v2.2.9
+c Script compiled at = 2022-11-14T16:46:35Z
+c Git hash           = GITDIR-NOTFOUND
+c Copyright          = Richard Barnes © 2018
+a Analysis command   = /srv/taudem/richdem-2.3.1/build/apps/rd_depressions_flood.exe /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/dem_burned.tif /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/dem_burned_filled.tif 0 
+TTTime 12.pitfill = 307 sec
+Cumulative_Time = 2532sec
+
+##########################################################################
+D8 Flow Directions on Burned DEM 11140302
+##########################################################################
+Sun Jan 22 10:09:14 UTC 2023
+D8FlowDir version 5.2.1
+Input file /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/dem_burned_filled.tif has projected coordinate system.
+This run may take on the order of 1839 minutes to complete.
+This estimate is very approximate. 
+Run time is highly uncertain as it depends on the complexity of the input data 
+and speed and memory of the computer. This estimate is based on our testing on 
+a dual quad core Dell Xeon E5405 2.0GHz PC with 16GB RAM.
+Reading input data (673.4 MB)... done (483.4 MB/s).
+Calculating flow directions... done. 61882302 flats to resolve.
+Finding flat islands...
+Processing partial flats
+PRL: 3305346 flats shared across processors (58576956 local -> 5.34% shared)
+PRL: Lower gradient processed 457899 flats this iteration
+PRL: Lower gradient processed 47746 flats this iteration
+PRL: Lower gradient processed 8525 flats this iteration
+PRL: Lower gradient processed 682 flats this iteration
+PRL: Lower gradient processed 16498 flats this iteration
+PRL: Lower gradient processed 0 flats this iteration
+PRL: Higher gradient processed 100046 flats this iteration
+PRL: Higher gradient processed 0 flats this iteration
+
+PRL: Setting directions
+PRL: Iteration complete. Number of flats remaining: 353573
+PRL: Lower gradient processed 687 flats this iteration
+PRL: Lower gradient processed 0 flats this iteration
+PRL: Higher gradient processed 186 flats this iteration
+PRL: Higher gradient processed 0 flats this iteration
+
+PRL: Setting directions
+PRL: Iteration complete. Number of flats remaining: 6412
+PRL: Lower gradient processed 0 flats this iteration
+PRL: Higher gradient processed 0 flats this iteration
+
+PRL: Setting directions
+PRL: Iteration complete. Number of flats remaining: 0
+Resolving flats
+Setting directions
+Iteration complete. Number of flats remaining: 84879
+
+Resolving flats
+Setting directions
+Iteration complete. Number of flats remaining: 31
+
+Resolving flats
+Setting directions
+Iteration complete. Number of flats remaining: 0
+
+Processors: 8
+Total: 93.74 (71.20 - 108.60)
+ Header read: 0.60 (0.46 - 0.73)
+ Data read: 0.78 (0.66 - 0.93)
+ Calculate flow directions: 26.21 (6.04 - 43.54)
+ Resolve flats: 35.94 (19.30 - 54.40)
+  Add flats: 1.15 (0.80 - 1.67)
+  Find islands: 5.37 (0.46 - 11.97)
+  Resolve shared flats: 11.11 (3.99 - 16.38)
+  Resolve local flats: 18.30 (1.67 - 36.76)
+ Write directions: 12.63 (1.81 - 44.12)
+TTTime 13.d8 = 111 sec
+Cumulative_Time = 2643sec
+
+##########################################################################
+D8 Flow Accumulations 11140302
+##########################################################################
+Sun Jan 22 10:11:05 UTC 2023
+This run may take on the order of 29 minutes to complete.
+This estimate is very approximate. 
+Run time is highly uncertain as it depends on the complexity of the input data 
+and speed and memory of the computer. This estimate is based on our testing on 
+a dual quad core Dell Xeon E5405 2.0GHz PC with 16GB RAM.
+AreaD8 version 5.3.9
+Input file /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/flowdir_d8_burned_filled.tif has projected coordinate system.
+Nodata value input to create partition from file: -32768.000000
+Nodata value recast to int16_t used in partition raster: -32768
+Input file /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/headwaters.tif has projected coordinate system.
+Nodata value input to create partition from file: -10000000000.000000
+Nodata value recast to float used in partition raster: -10000000000.000000
+Setting BIGTIFF, File: /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/flowaccum_d8_burned_filled.tif, Anticipated size (GB):5.65
+Number of Processes: 1
+Read time: 27.677628
+Compute time: 234.109680
+Write time: 18.155600
+Total time: 279.942908
+TTTime 14.aread8 = 283 sec
+Cumulative_Time = 2926sec
+
+##########################################################################
+Threshold Accumulations 11140302
+##########################################################################
+Sun Jan 22 10:15:48 UTC 2023
+This run may take on the order of 3 minutes to complete.
+This estimate is very approximate. 
+Run time is highly uncertain as it depends on the complexity of the input data 
+and speed and memory of the computer. This estimate is based on our testing on 
+a dual quad core Dell Xeon E5405 2.0GHz PC with 16GB RAM.
+Threshold version 5.3.9
+Input file /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/flowaccum_d8_burned_filled.tif has projected coordinate system.
+Nodata value input to create partition from file: -1.000000
+Nodata value recast to float used in partition raster: -1.000000
+Compute time: 11.550900
+TTTime 15.sg = 39 sec
+Cumulative_Time = 2965sec
+
+##########################################################################
+Preprocessing for lateral thalweg adjustment 11140302
+##########################################################################
+Sun Jan 22 10:16:27 UTC 2023
+WARNING: Precision loss: Float32 can not preserve the DCELL precision of
+         raster <proximity@temporary_mapset>. This can be avoided by using
+         Float64
+WARNING: Forcing raster export
+WARNING: Too many values, color table cut to 65535 entries
+GRASSDISK /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/temp_grass 8.4G
+TTTime 16.indsg = 606 sec
+Cumulative_Time = 3571sec
+
+##########################################################################
+Performing lateral thalweg adjustment 11140302
+##########################################################################
+Sun Jan 22 10:26:33 UTC 2023
+/srv/test/cahaba/src/adjust_thalweg_lateral.py:25: NumbaTypeSafetyWarning: [1m[1m[1munsafe cast from int64 to int32. Precision may be lost.[0m[0m[0m
+  if (elev_m in zone_min_dict):
+TTTime 17.thalweg = 188 sec
+Cumulative_Time = 3759sec
+
+##########################################################################
+Mask Burned DEM for Thalweg Only 11140302
+##########################################################################
+Sun Jan 22 10:29:41 UTC 2023
+TTTime 18.d8sg = 37 sec
+Cumulative_Time = 3796sec
+
+##########################################################################
+Flow Condition Thalweg 11140302
+##########################################################################
+Sun Jan 22 10:30:18 UTC 2023
+FlowDirCond version 5.3.9
+This run may take on the order of 29 minutes to complete.
+This estimate is very approximate. 
+Run time is highly uncertain as it depends on the complexity of the input data 
+and speed and memory of the computer. This estimate is based on our testing on 
+a dual quad core Dell Xeon E5405 2.0GHz PC with 16GB RAM.
+Input file /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/flowdir_d8_burned_filled_flows.tif has projected coordinate system.
+Nodata value input to create partition from file: 0.000000
+Nodata value recast to int16_t used in partition raster: 0
+Input file /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/dem_lateral_thalweg_adj.tif has projected coordinate system.
+Nodata value input to create partition from file: -9999.000000
+Nodata value recast to float used in partition raster: -9999.000000
+Setting BIGTIFF, File: /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/dem_thalwegCond.tif, Anticipated size (GB):5.65
+Processors: 1
+Read time: 31.094767
+Compute time: 11.058021
+Write time: 46.725867
+Total time: 88.878655
+TTTime 19.b_thalweg = 91 sec
+Cumulative_Time = 3887sec
+
+##########################################################################
+D8 Slopes from DEM 11140302
+##########################################################################
+Sun Jan 22 10:31:49 UTC 2023
+D8FlowDir version 5.2.1
+Input file /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/dem_lateral_thalweg_adj.tif has projected coordinate system.
+This run may take on the order of 1839 minutes to complete.
+This estimate is very approximate. 
+Run time is highly uncertain as it depends on the complexity of the input data 
+and speed and memory of the computer. This estimate is based on our testing on 
+a dual quad core Dell Xeon E5405 2.0GHz PC with 16GB RAM.
+Reading input data (673.4 MB)... done (156.4 MB/s).
+Calculating flow directions... Setting BIGTIFF, File: /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/slopes_d8_dem_meters.tif, Anticipated size (GB):5.65
+done. 23877120 flats to resolve.
+Finding flat islands...
+PRL: 10902848 flats shared across processors (12974272 local -> 45.66% shared)
+Processing partial flats
+PRL: Lower gradient processed 125620 flats this iteration
+PRL: Lower gradient processed 0 flats this iteration
+PRL: Higher gradient processed 128796 flats this iteration
+PRL: Higher gradient processed 9 flats this iteration
+PRL: Higher gradient processed 0 flats this iteration
+
+PRL: Setting directions
+PRL: Iteration complete. Number of flats remaining: 7655105
+PRL: Lower gradient processed 32517 flats this iteration
+PRL: Lower gradient processed 126 flats this iteration
+PRL: Lower gradient processed 0 flats this iteration
+PRL: Higher gradient processed 10615 flats this iteration
+PRL: Higher gradient processed 0 flats this iteration
+
+PRL: Setting directions
+PRL: Iteration complete. Number of flats remaining: 422874
+PRL: Lower gradient processed 522 flats this iteration
+PRL: Lower gradient processed 0 flats this iteration
+PRL: Higher gradient processed 7 flats this iteration
+PRL: Higher gradient processed 0 flats this iteration
+
+PRL: Setting directions
+PRL: Iteration complete. Number of flats remaining: 319
+PRL: Lower gradient processed 0 flats this iteration
+PRL: Higher gradient processed 0 flats this iteration
+
+PRL: Setting directions
+PRL: Iteration complete. Number of flats remaining: 0
+Resolving flats
+Setting directions
+Iteration complete. Number of flats remaining: 123602
+
+Resolving flats
+Setting directions
+Iteration complete. Number of flats remaining: 1998
+
+Resolving flats
+Setting directions
+Iteration complete. Number of flats remaining: 0
+
+Processors: 8
+Total: 142.22 (132.76 - 150.43)
+ Header read: 0.62 (0.49 - 0.73)
+ Data read: 3.41 (2.51 - 3.82)
+ Calculate flow directions: 27.05 (6.16 - 44.87)
+ Calculate slope: 6.29 (4.35 - 7.77)
+ Write slope: 27.36 (4.92 - 75.90)
+ Resolve flats: 43.63 (39.23 - 47.95)
+  Add flats: 0.90 (0.77 - 1.23)
+  Find islands: 2.55 (0.17 - 8.57)
+  Resolve shared flats: 35.16 (28.72 - 37.69)
+  Resolve local flats: 5.00 (0.60 - 9.31)
+ Write directions: 8.81 (1.92 - 21.43)
+TTTime 20.d8thalweg = 153 sec
+Cumulative_Time = 4040sec
+
+##########################################################################
+Stream Net for Reaches 11140302
+##########################################################################
+Sun Jan 22 10:34:22 UTC 2023
+StreamNet version 5.3.9
+This run may take on the order of 2355 minutes to complete.
+This estimate is very approximate. 
+Run time is highly uncertain as it depends on the complexity of the input data 
+and speed and memory of the computer. This estimate is based on our testing on 
+a dual quad core Dell Xeon E5405 2.0GHz PC with 16GB RAM.
+Input file /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/demDerived_streamPixels.tif has projected coordinate system.
+Nodata value input to create partition from file: -32768.000000
+Nodata value recast to int16_t used in partition raster: -32768
+Input file /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/flowdir_d8_burned_filled.tif has projected coordinate system.
+Nodata value input to create partition from file: -32768.000000
+Nodata value recast to int16_t used in partition raster: -32768
+Input file /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/flowaccum_d8_burned_filled.tif has projected coordinate system.
+Nodata value input to create partition from file: -1.000000
+Nodata value recast to float used in partition raster: -1.000000
+Input file /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/dem_thalwegCond.tif has projected coordinate system.
+Nodata value input to create partition from file: -9999.000000
+Nodata value recast to float used in partition raster: -9999.000000
+Evaluating distances to outlet
+Creating links
+
+ Calculating watersheds
+Setting BIGTIFF, File: /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/sn_catchments_reaches.tif, Anticipated size (GB):5.65
+Processors: 1
+Read time: 74.627787
+Length compute time: 11.521378
+Link compute time: 11.570961
+Link write time: 1.844542
+Watershed compute time: 204.789016
+Write time: 50.058015
+Total time: 354.411699
+TTTime 21.streamnet = 357 sec
+Cumulative_Time = 4397sec
+
+##########################################################################
+Split Derived Reaches 11140302
+##########################################################################
+Sun Jan 22 10:40:19 UTC 2023
+/srv/sw/conda.evns/fim3/lib/python3.7/site-packages/geopandas/_compat.py:110: UserWarning: The Shapely GEOS version (3.8.0-CAPI-1.13.1 ) is incompatible with the GEOS version PyGEOS was compiled with (3.8.1-CAPI-1.13.3). Conversions between both will be slow.
+  shapely_geos_version, geos_capi_version_string
+Loading data ...
+splitting stream segments at HUC8 boundaries
+/srv/test/cahaba/src/split_flows.py:300: UserWarning: `keep_geom_type=True` in overlay resulted in 9 dropped geometries of different geometry types than df1 has. Set `keep_geom_type=False` to retain all geometries
+  flows = gpd.overlay(flows, wbd8, how='union').explode().reset_index(drop=True)
+splitting stream segments at 6 waterbodies
+split_flows_on_lakes: rtree efficiency: space: 696 x 6 = 4176 match rate: 69 / 4176 = 0.016522988505747127
+split_flows_on_lakes: split stats: flowlines_considered 69 split_ratio: 39 / 19 = 2.0526315789473686
+split_flows_on_lakes: preserved stats: not_touched: 627 no_split: 50
+splitting 716 stream segments based on 1500.0 m max length
+Required field HydroID does not exist in input. Generating..
+Generated HydroID
+Field From_Node does not exist in input 
+Field To_Node does not exist in input. Generating..
+Generated To/From Nodes
+Writing outputs ...
+TTTime 22.split = 249 sec
+Cumulative_Time = 4646sec
+
+##########################################################################
+Gage Watershed for Reaches 11140302
+##########################################################################
+Sun Jan 22 10:44:28 UTC 2023
+Gage Watershed version 5.3.9
+Input file /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/flowdir_d8_burned_filled.tif has projected coordinate system.
+Warning: Projection of Outlet feature and Raster data may be different.
+Projection of Raster datasource NAD83 / Conus Albers.
+Projection of Outlet feature USA_Contiguous_Albers_Equal_Area_Conic_USGS_version.
+Nodata value input to create partition from file: -32768.000000
+Nodata value recast to int16_t used in partition raster: -32768
+This run may take on the order of 8 minutes to complete.
+This estimate is very approximate. 
+Run time is highly uncertain as it depends on the complexity of the input data 
+and speed and memory of the computer. This estimate is based on our testing on 
+a dual quad core Dell Xeon E5405 2.0GHz PC with 16GB RAM.
+Setting BIGTIFF, File: /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/gw_catchments_reaches.tif, Anticipated size (GB):5.65
+Size: 8
+Read time: 2.265124
+Compute time: 62.972141
+Write time: 3.142813
+Total time: 68.380078
+TTTime 23.catseg = 95 sec
+Cumulative_Time = 4741sec
+
+##########################################################################
+Vectorize Pixel Centroids 11140302
+##########################################################################
+Sun Jan 22 10:46:03 UTC 2023
+/srv/sw/conda.evns/fim3/lib/python3.7/site-packages/geopandas/_compat.py:110: UserWarning: The Shapely GEOS version (3.8.0-CAPI-1.13.1 ) is incompatible with the GEOS version PyGEOS was compiled with (3.8.1-CAPI-1.13.3). Conversions between both will be slow.
+  shapely_geos_version, geos_capi_version_string
+TTTime 24.v_sg = 120 sec
+Cumulative_Time = 4861sec
+
+##########################################################################
+Gage Watershed for Pixels 11140302
+##########################################################################
+Sun Jan 22 10:48:03 UTC 2023
+Gage Watershed version 5.3.9
+Input file /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/flowdir_d8_burned_filled.tif has projected coordinate system.
+Warning: Projection of Outlet feature and Raster data may be different.
+Projection of Raster datasource NAD83 / Conus Albers.
+Projection of Outlet feature USA_Contiguous_Albers_Equal_Area_Conic_USGS_version.
+Nodata value input to create partition from file: -32768.000000
+Nodata value recast to int16_t used in partition raster: -32768
+This run may take on the order of 8 minutes to complete.
+This estimate is very approximate. 
+Run time is highly uncertain as it depends on the complexity of the input data 
+and speed and memory of the computer. This estimate is based on our testing on 
+a dual quad core Dell Xeon E5405 2.0GHz PC with 16GB RAM.
+Setting BIGTIFF, File: /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/gw_catchments_pixels.tif, Anticipated size (GB):5.65
+Size: 8
+Read time: 1.855125
+Compute time: 71.501329
+Write time: 3.377142
+Total time: 76.733595
+TTTime 25.catsegcell = 107 sec
+Cumulative_Time = 4968sec
+
+##########################################################################
+D8 REM 11140302
+##########################################################################
+Sun Jan 22 10:49:50 UTC 2023
+/srv/sw/conda.evns/fim3/lib/python3.7/site-packages/geopandas/_compat.py:110: UserWarning: The Shapely GEOS version (3.8.0-CAPI-1.13.1 ) is incompatible with the GEOS version PyGEOS was compiled with (3.8.1-CAPI-1.13.3). Conversions between both will be slow.
+  shapely_geos_version, geos_capi_version_string
+TTTime 26.hand = 204 sec
+Cumulative_Time = 5172sec
+
+##########################################################################
+Zero out negative values in distance down grid 11140302
+##########################################################################
+Sun Jan 22 10:53:14 UTC 2023
+TTTime 27.handge0 = 72 sec
+Cumulative_Time = 5244sec
+
+##########################################################################
+Polygonize Reach Watersheds 11140302
+##########################################################################
+Sun Jan 22 10:54:26 UTC 2023
+Creating output /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/gw_catchments_reaches.gpkg of format GPKG.
+0...10...20...30...40...50...60...70...80...90...100 - done.
+TTTime 28.v_catseg = 107 sec
+Cumulative_Time = 5351sec
+
+##########################################################################
+Process catchments and model streams step 1 11140302
+##########################################################################
+Sun Jan 22 10:56:13 UTC 2023
+/srv/sw/conda.evns/fim3/lib/python3.7/site-packages/geopandas/_compat.py:110: UserWarning: The Shapely GEOS version (3.8.0-CAPI-1.13.1 ) is incompatible with the GEOS version PyGEOS was compiled with (3.8.1-CAPI-1.13.3). Conversions between both will be slow.
+  shapely_geos_version, geos_capi_version_string
+TTTime 29.seghucattr = 19 sec
+Cumulative_Time = 5370sec
+
+##########################################################################
+Get Clipped Raster Metadata 11140302
+##########################################################################
+Sun Jan 22 10:56:32 UTC 2023
+TTTime meta.cat_r = 0 sec
+Cumulative_Time = 5370sec
+
+##########################################################################
+Rasterize filtered catchments 11140302
+##########################################################################
+Sun Jan 22 10:56:32 UTC 2023
+0...10...20...30...40...50...60...70...80...90...100 - done.
+TTTime 30.r_segcat = 34 sec
+Cumulative_Time = 5404sec
+
+##########################################################################
+Rasterize filtered/dissolved ocean/Glake polygon 11140302
+##########################################################################
+Sun Jan 22 10:57:06 UTC 2023
+TTTime 31.r_landsea = 0 sec
+Cumulative_Time = 5404sec
+
+##########################################################################
+Masking Slope Raster to HUC 11140302
+##########################################################################
+Sun Jan 22 10:57:06 UTC 2023
+TTTime 32.slopehucmask = 106 sec
+Cumulative_Time = 5510sec
+
+##########################################################################
+Masking REM Raster to HUC 11140302
+##########################################################################
+Sun Jan 22 10:58:52 UTC 2023
+TTTime 33.handhucmask = 86 sec
+Cumulative_Time = 5596sec
+
+##########################################################################
+Additional masking to REM raster to remove ocean/Glake areas in HUC 11140302
+##########################################################################
+Sun Jan 22 11:00:18 UTC 2023
+TTTime 34.handnolandsea = 0 sec
+Cumulative_Time = 5596sec
+
+##########################################################################
+Generate Catchment List and Stage List Files 11140302
+##########################################################################
+Sun Jan 22 11:00:18 UTC 2023
+/srv/sw/conda.evns/fim3/lib/python3.7/site-packages/geopandas/_compat.py:110: UserWarning: The Shapely GEOS version (3.8.0-CAPI-1.13.1 ) is incompatible with the GEOS version PyGEOS was compiled with (3.8.1-CAPI-1.13.3). Conversions between both will be slow.
+  shapely_geos_version, geos_capi_version_string
+TTTime 35.cat_stage_txt = 4 sec
+Cumulative_Time = 5600sec
+
+##########################################################################
+Hydraulic Properties 11140302
+##########################################################################
+Sun Jan 22 11:00:22 UTC 2023
+This run may take on the order of 3 minutes to complete.
+This estimate is very approximate. 
+Run time is highly uncertain as it depends on the complexity of the input data 
+and speed and memory of the computer. This estimate is based on our testing on 
+a dual quad core Dell Xeon E5405 2.0GHz PC with 16GB RAM.
+CatchHydroGeo version 5.3.9
+Input file /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/rem_zeroed_masked.tif has projected coordinate system.
+Nodata value input to create partition from file: -9999.000000
+Nodata value recast to float used in partition raster: -9999.000000
+Input file /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/gw_catchments_reaches_filtered_addedAttributes.tif has projected coordinate system.
+Nodata value input to create partition from file: 0.000000
+Nodata value recast to int32_t used in partition raster: 0
+Input file /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/slopes_d8_dem_meters_masked.tif has projected coordinate system.
+Nodata value input to create partition from file: -1.000000
+Nodata value recast to float used in partition raster: -1.000000
+Compute time: 907.834651
+TTTime 36.catchhydrogeo = 910 sec
+Cumulative_Time = 6510sec
+
+##########################################################################
+Finalize catchments and model streams 11140302
+########################################################################## output_bathy_thalweg_fileName,output_bathy_xs_lookup_fileName,
+Sun Jan 22 11:15:32 UTC 2023
+python3 -m memory_profiler /srv/test/cahaba/src/add_crosswalk.py -d /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/gw_catchments_reaches_filtered_addedAttributes.gpkg -a /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/demDerived_reaches_split_filtered.gpkg -s /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/src_base.csv -u /home/yxl/test/fim3/inputs//bathymetry/BANKFULL_CONUS.txt -v /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/bathy_crosswalk_calcs.csv -e /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/bathy_stream_order_calcs.csv -g /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/bathy_thalweg_flag.csv -i /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/bathy_xs_area_hydroid_lookup.csv -l /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/gw_catchments_reaches_filtered_addedAttributes_crosswalked.gpkg -f /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/demDerived_reaches_split_filtered_addedAttributes_crosswalked.gpkg -r /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/src_full_crosswalked.csv -j /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/src.json -x /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/crosswalk_table.csv -t /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/hydroTable.csv -w /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/wbd8_clp.gpkg -b /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/nwm_subset_streams.gpkg -y /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/nwm_catchments_proj_subset.tif -m /srv/test/cahaba/src/../config/mannings_calibrated.json -z /home/yxl/test/fim3/inputs/nwm_hydrofabric/nwm_catchments.gpkg -p FR -k /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/small_segments.csv
+/srv/sw/conda.evns/fim3/lib/python3.7/site-packages/geopandas/_compat.py:110: UserWarning: The Shapely GEOS version (3.8.0-CAPI-1.13.1 ) is incompatible with the GEOS version PyGEOS was compiled with (3.8.1-CAPI-1.13.3). Conversions between both will be slow.
+  shapely_geos_version, geos_capi_version_string
+Adjusting model reach rating curves
+Number of short reaches [areasqkm < 0.25 and LengthKm < 0.5] = 15
+Update rating curves for short reaches.
+Note: NOT using bathy estimation approach to modify the SRC...
+TTTime 37.hydrotable = 577 sec
+Cumulative_Time = 7087sec
+
+##########################################################################
+USGS Crosswalk 11140302
+##########################################################################
+Sun Jan 22 11:25:09 UTC 2023
+/srv/sw/conda.evns/fim3/lib/python3.7/site-packages/geopandas/_compat.py:110: UserWarning: The Shapely GEOS version (3.8.0-CAPI-1.13.1 ) is incompatible with the GEOS version PyGEOS was compiled with (3.8.1-CAPI-1.13.3). Conversions between both will be slow.
+  shapely_geos_version, geos_capi_version_string
+TTTime 38.xwalk = 3 sec
+Cumulative_Time = 7090sec
+
+##########################################################################
+Cleaning up outputs 11140302
+##########################################################################
+Sun Jan 22 11:25:12 UTC 2023
+TTTime 39.cleanup = 1 sec
+Cumulative_Time = 7091sec
+
+##########################################################################
+generate return period, banfull, limiting discharge properties in HUC 11140302
+##########################################################################
+Sun Jan 22 11:25:13 UTC 2023
+583 unique feature_ids from 1 HUCs
+HUC 11140302 : 583
+0 feature_ids are shared among HUCs
+HUC 11140302 : 2017
+0 HydroIDs are shared among HUCs
+There are 33 COMIDs missing NOAA NWM Reanalysis data
+[1128647, 1128649, 1128651, 1128655, 1128657, 1128659, 1128665, 1128673, 1128675, 1128677, 1128679, 1128683, 1128685, 1128691, 1128693, 1128695, 1128697, 1128699, 1128701, 1128703, 1128705, 1128709, 1128711, 1128713, 1128715, 1128719, 1128723, 1128725, 1128727, 1128729, 1128733, 1129629, 1129633]
+Processing 11140302 ...
+WARN comid 1128685 not found
+WARN comid 1128691 not found
+WARN comid 1128691 not found
+WARN comid 1128691 not found
+WARN comid 1128691 not found
+WARN comid 1128691 not found
+WARN comid 1128691 not found
+WARN comid 1128691 not found
+WARN comid 1128691 not found
+WARN comid 1128685 not found
+WARN comid 1128683 not found
+WARN comid 1128683 not found
+WARN comid 1128675 not found
+WARN comid 1128675 not found
+WARN comid 1128695 not found
+WARN comid 1128695 not found
+WARN comid 1128725 not found
+WARN comid 1128725 not found
+WARN comid 1128703 not found
+WARN comid 1128697 not found
+WARN comid 1128729 not found
+WARN comid 1128729 not found
+WARN comid 1128713 not found
+WARN comid 1128713 not found
+WARN comid 1128705 not found
+WARN comid 1128705 not found
+WARN comid 1128705 not found
+WARN comid 1128705 not found
+WARN comid 1128723 not found
+WARN comid 1128723 not found
+WARN comid 1128729 not found
+WARN comid 1128729 not found
+WARN comid 1128723 not found
+WARN comid 1129629 not found
+WARN comid 1129633 not found
+WARN comid 1129629 not found
+WARN comid 1128677 not found
+WARN comid 1128677 not found
+WARN comid 1128677 not found
+WARN comid 1128709 not found
+WARN comid 1128709 not found
+WARN comid 1128709 not found
+WARN comid 1128709 not found
+WARN comid 1128665 not found
+WARN comid 1128665 not found
+WARN comid 1128657 not found
+WARN comid 1128657 not found
+WARN comid 1128657 not found
+WARN comid 1128657 not found
+WARN comid 1128657 not found
+WARN comid 1128657 not found
+WARN comid 1128649 not found
+WARN comid 1128651 not found
+WARN comid 1128679 not found
+WARN comid 1128677 not found
+WARN comid 1128677 not found
+WARN comid 1128677 not found
+WARN comid 1128677 not found
+WARN comid 1128685 not found
+WARN comid 1128685 not found
+WARN comid 1128675 not found
+WARN comid 1128697 not found
+WARN comid 1128725 not found
+WARN comid 1128725 not found
+WARN comid 1128725 not found
+WARN comid 1128655 not found
+WARN comid 1128655 not found
+WARN comid 1128655 not found
+WARN comid 1128655 not found
+WARN comid 1128715 not found
+WARN comid 1128715 not found
+WARN comid 1128715 not found
+WARN comid 1128727 not found
+WARN comid 1128701 not found
+WARN comid 1128701 not found
+WARN comid 1128701 not found
+WARN comid 1128713 not found
+WARN comid 1128713 not found
+WARN comid 1128713 not found
+WARN comid 1128713 not found
+WARN comid 1128713 not found
+WARN comid 1128711 not found
+WARN comid 1128711 not found
+WARN comid 1128711 not found
+WARN comid 1128679 not found
+WARN comid 1128679 not found
+WARN comid 1128729 not found
+WARN comid 1128729 not found
+WARN comid 1128729 not found
+WARN comid 1128729 not found
+WARN comid 1128673 not found
+WARN comid 1128729 not found
+WARN comid 1128733 not found
+WARN comid 1128733 not found
+WARN comid 1128729 not found
+WARN comid 1128723 not found
+WARN comid 1128719 not found
+WARN comid 1128693 not found
+WARN comid 1128715 not found
+WARN comid 1128699 not found
+WARN comid 1128679 not found
+WARN comid 1128679 not found
+WARN comid 1128679 not found
+WARN comid 1128679 not found
+WARN comid 1128659 not found
+WARN comid 1128647 not found
+WARN comid 1128649 not found
+Saving rp bf properties to file.
+Limiting discharge: loading USGS lookup table
+Limiting discharge: loading NHDPlusV21 MR COMID-TotDASqKM table
+/srv/sw/conda.evns/fim3/lib/python3.7/site-packages/numpy/lib/arraysetops.py:580: FutureWarning: elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+  mask |= (ar1 == a)
+----limiting discharge on UDA for HUC 11140302 ----
+read 2017 HydroIDs
+diff min: 0.0 diff max: 1.862645149230957e-09 diff avg: 8.381960976674414e-11
+num of diff > 1 meter^2: 0
+cda_init: hydroid 24191810 comid 1126261 ext cda: 0.7083000000000013 , new cda: 3.2159520000000015
+cda_init: hydroid 24191594 comid 1125347 ext cda: 9.759599999999999 , new cda: 10.345203
+cda_init: hydroid 24191642 comid 1125429 ext cda: 0.43470000000000003 , new cda: 1.293039
+cda_init: hydroid 24191532 comid 1129417 ext cda: 0.4139999999999999 , new cda: 1.955619
+cda_init: hydroid 24191170 comid 1129509 ext cda: 257.5323 , new cda: 258.075963
+cda_init: hydroid 24190217 comid 1129595 ext cda: 2969.3187 , new cda: 2969.328357
+cda_init: hydroid 24191143 comid 1129539 ext cda: 4.248900000000001 , new cda: 7.075197000000001
+cda_init: hydroid 24191082 comid 1128249 ext cda: 2.2058999999999997 , new cda: 7.1901269999999995
+cda_init: hydroid 24191062 comid 1128555 ext cda: 0.8846999999999996 , new cda: 3.2416559999999994
+cda_init: hydroid 24191124 comid 4300939 ext cda: 72.0522 , new cda: 108.899334
+cda_init: hydroid 24191022 comid 1128319 ext cda: 8926.4754 , new cda: 8931.501153
+cda_init: hydroid 24191008 comid 1128345 ext cda: 2183.0067 , new cda: 2183.006709
+cda_init: hydroid 24190976 comid 1128377 ext cda: 1.0448999999999993 , new cda: 4.3450109999999995
+cda_init: 13 HydroIDs flow into the huc have non-zero cumulative drainage area
+uda computation done in 139 iterations. found 0 braided cases
+computed limiting discharge attributes: 11140302
+TTTime 40.rp_bf_limitdischarge = 49 sec
+Cumulative_Time = 7140sec
+
+##########################################################################
+generate Healed HAND in HUC 11140302
+##########################################################################
+Sun Jan 22 11:26:02 UTC 2023
+TTTime 41.handhealed = 117 sec
+Cumulative_Time = 7257sec
+
+##########################################################################
+convert gpkg to filegdb 11140302
+##########################################################################
+Sun Jan 22 11:27:59 UTC 2023
+Warning 6: Normalized/laundered field name: 'OBJECTID' to 'OBJECTID_'
+done. output is /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/filegdb.zip
+TTTime 42.filegdb = 185 sec
+Cumulative_Time = 7442sec
+11140302 full output...
+  adding: 11140302/hydroTable_rp_bf_lmtdischarge_cda.csv (deflated 85%)
+  adding: 11140302/rem_zeroed_masked_healed.tif (deflated 7%)
+  adding: 11140302/filegdb.zip (stored 0%)
+  adding: 11140302/rem_zeroed_masked.tif (deflated 7%)
+  adding: 11140302/hydroTable.csv (deflated 72%)
+  adding: 11140302/small_segments.csv (deflated 63%)
+  adding: 11140302/src.json (deflated 74%)
+  adding: 11140302/dem_meters.tif (deflated 4%)
+  adding: 11140302/demDerived_reaches_split_filtered_addedAttributes_crosswalked.gpkg (deflated 89%)
+  adding: 11140302/gw_catchments_reaches_filtered_addedAttributes_crosswalked.gpkg (deflated 86%)
+  adding: 11140302/gw_catchments_reaches_filtered_addedAttributes.tif (deflated 21%)
+  adding: 11140302/crosswalk_table.csv (deflated 83%)
+  adding: 11140302/demDerived_reaches.dbf (deflated 78%)
+  adding: 11140302/demDerived_reaches.prj (deflated 41%)
+  adding: 11140302/demDerived_reaches.shp (deflated 82%)
+  adding: 11140302/demDerived_reaches.shx (deflated 25%)
+  adding: 11140302/NHDPlusBurnLineEvent_subset.gpkg (deflated 40%)
+  adding: 11140302/src_full_crosswalked.csv (deflated 68%)
+  adding: 11140302/demDerived_streamPixels.tif (deflated 85%)
+  adding: 11140302/dem_thalwegCond.tif (deflated 3%)
+  adding: 11140302/flowdir_d8_burned_filled.tif (deflated 11%)
+  adding: 11140302/wbd.gpkg (deflated 56%)
+  adding: 11140302/wbd8_clp.gpkg (deflated 41%)
+  adding: 11140302/wbd_buffered.gpkg (deflated 74%)
+  adding: 11140302/nhd_headwater_points_subset.gpkg (deflated 84%)
+  adding: 11140302/nwm_lakes_proj_subset.gpkg (deflated 61%)
+  adding: 11140302/nwm_subset_streams.gpkg (deflated 39%)
+  adding: 11140302/nwm_catchments_proj_subset.gpkg (deflated 56%)
+11140302 output /home/yxl/test/fim3/region6/11140302.zip
+11140302 full output size & content:
+54G	11140302
+54G	total
+total 54G
+-rw-r--r--. 1 cades cades 6.2M Jan 22 04:34 NHDPlusBurnLineEvent_subset.gpkg
+-rw-rw-r--. 1 cades cades 2.3G Jan 22 04:52 agree_bufgrid.tif
+-rw-rw-r--. 1 cades cades 3.1G Jan 22 05:00 agree_bufgrid_allo.tif
+-rw-rw-r--. 1 cades cades 2.9G Jan 22 04:59 agree_bufgrid_dist.tif
+-rw-rw-r--. 1 cades cades  23M Jan 22 04:42 agree_smogrid.tif
+-rw-rw-r--. 1 cades cades 833M Jan 22 04:50 agree_smogrid_allo.tif
+-rw-rw-r--. 1 cades cades 5.4G Jan 22 04:49 agree_smogrid_dist.tif
+-rw-rw-r--. 1 cades cades 103K Jan 22 06:00 catchment_list.txt
+-rw-rw-r--. 1 cades cades  63M Jan 22 05:36 coordFile.txt
+-rw-rw-r--. 1 cades cades  34K Jan 22 06:25 crosswalk_table.csv
+-rw-rw-r--. 1 cades cades 135K Jan 22 05:36 demDerived_reaches.dbf
+-rw-rw-r--. 1 cades cades  459 Jan 22 05:36 demDerived_reaches.prj
+-rw-rw-r--. 1 cades cades  16M Jan 22 05:36 demDerived_reaches.shp
+-rw-rw-r--. 1 cades cades 5.5K Jan 22 05:36 demDerived_reaches.shx
+-rw-r--r--. 1 cades cades  30M Jan 22 05:51 demDerived_reaches_split.gpkg
+-rw-r--r--. 1 cades cades  23M Jan 22 05:56 demDerived_reaches_split_filtered.gpkg
+-rw-r--r--. 1 cades cades  23M Jan 22 06:25 demDerived_reaches_split_filtered_addedAttributes_crosswalked.gpkg
+-rw-r--r--. 1 cades cades 103M Jan 22 05:44 demDerived_reaches_split_points.gpkg
+-rw-rw-r--. 1 cades cades  29M Jan 22 05:16 demDerived_streamPixels.tif
+-rw-rw-r--. 1 cades cades 101M Jan 22 05:17 demDerived_streamPixels_ids.tif
+-rw-rw-r--. 1 cades cades 1.4G Jan 22 05:26 demDerived_streamPixels_ids_allo.tif
+-rw-rw-r--. 1 cades cades 5.5G Jan 22 05:24 demDerived_streamPixels_ids_dist.tif
+-rw-rw-r--. 1 cades cades 2.5G Jan 22 05:04 dem_burned.tif
+-rw-rw-r--. 1 cades cades 5.3G Jan 22 05:09 dem_burned_filled.tif
+-rw-rw-r--. 1 cades cades 2.4G Jan 22 05:29 dem_lateral_thalweg_adj.tif
+-rw-rw-r--. 1 cades cades 2.5G Jan 22 04:41 dem_meters.tif
+-rw-rw-r--. 1 cades cades 2.6G Jan 22 05:31 dem_thalwegCond.tif
+-rw-rw-r--. 1 cades cades 5.7M Jan 22 06:31 filegdb.zip
+-rw-rw-r--. 1 cades cades  52M Jan 22 05:15 flowaccum_d8_burned_filled.tif
+-rw-rw-r--. 1 cades cades 267M Jan 22 05:11 flowdir_d8_burned_filled.tif
+-rw-rw-r--. 1 cades cades 2.7G Jan 22 05:30 flowdir_d8_burned_filled_flows.tif
+-rw-rw-r--. 1 cades cades  23M Jan 22 04:39 flows_grid_boolean.tif
+-rw-r--r--. 1 cades cades 100M Jan 22 05:48 flows_points_pixels.gpkg
+-rw-rw-r--. 1 cades cades 492M Jan 22 05:49 gw_catchments_pixels.tif
+-rw-r--r--. 1 cades cades  92M Jan 22 05:56 gw_catchments_reaches.gpkg
+-rw-rw-r--. 1 cades cades 308M Jan 22 05:46 gw_catchments_reaches.tif
+-rw-r--r--. 1 cades cades  69M Jan 22 05:56 gw_catchments_reaches_filtered_addedAttributes.gpkg
+-rw-rw-r--. 1 cades cades 194M Jan 22 05:57 gw_catchments_reaches_filtered_addedAttributes.tif
+-rw-r--r--. 1 cades cades  69M Jan 22 06:25 gw_catchments_reaches_filtered_addedAttributes_crosswalked.gpkg
+-rw-rw-r--. 1 cades cades  21M Jan 22 04:39 headwaters.tif
+-rw-rw-r--. 1 cades cades  20M Jan 22 06:25 hydroTable.csv
+-rw-rw-r--. 1 cades cades  52M Jan 22 06:26 hydroTable_rp_bf_lmtdischarge_cda.csv
+-rw-rw-r--. 1 cades cades  12M Jan 22 05:46 idFile.txt
+-rw-rw-r--. 1 cades cades  14M Jan 22 05:49 idFilePixels.txt
+-rw-r--r--. 1 cades cades 164K Jan 22 04:33 nhd_headwater_points_subset.gpkg
+-rw-rw-r--. 1 cades cades  22M Jan 22 04:39 nld_rasterized_elev.tif
+-rw-r--r--. 1 cades cades 448K Jan 22 04:33 nld_subset_levees.gpkg
+-rw-r--r--. 1 cades cades 7.3M Jan 22 04:34 nwm_catchments_proj_subset.gpkg
+-rw-rw-r--. 1 cades cades 253M Jan 22 04:40 nwm_catchments_proj_subset.tif
+-rw-r--r--. 1 cades cades 184K Jan 22 04:33 nwm_lakes_proj_subset.gpkg
+-rw-r--r--. 1 cades cades 1.7M Jan 22 04:34 nwm_subset_streams.gpkg
+-rw-rw-r--. 1 cades cades 2.3G Jan 22 05:53 rem.tif
+-rw-rw-r--. 1 cades cades 2.3G Jan 22 05:54 rem_zeroed.tif
+-rw-rw-r--. 1 cades cades 1.7G Jan 22 06:00 rem_zeroed_masked.tif
+-rw-rw-r--. 1 cades cades 1.7G Jan 22 06:27 rem_zeroed_masked_healed.tif
+-rw-rw-r--. 1 cades cades 2.6G Jan 22 05:33 slopes_d8_dem_meters.tif
+-rw-rw-r--. 1 cades cades 1.8G Jan 22 05:58 slopes_d8_dem_meters_masked.tif
+-rw-rw-r--. 1 cades cades  419 Jan 22 06:24 small_segments.csv
+-rw-rw-r--. 1 cades cades 202M Jan 22 05:39 sn_catchments_reaches.tif
+-rw-rw-r--. 1 cades cades 6.6M Jan 22 06:25 src.json
+-rw-rw-r--. 1 cades cades  18M Jan 22 06:15 src_base.csv
+-rw-rw-r--. 1 cades cades  35M Jan 22 06:25 src_full_crosswalked.csv
+-rw-rw-r--. 1 cades cades  623 Jan 22 06:00 stage.txt
+-rw-rw-r--. 1 cades cades  16M Jan 22 05:40 streamOrder.tif
+-rw-rw-r--. 1 cades cades  25K Jan 22 05:36 treeFile.txt
+-rw-rw-r--. 1 cades cades  77K Jan 22 06:25 uda.csv
+-rw-rw-r--. 1 cades cades  203 Jan 22 06:25 usgs_elev_table.csv
+-rw-r--r--. 1 cades cades 184K Jan 22 04:33 wbd.gpkg
+-rw-r--r--. 1 cades cades 344K Jan 22 04:34 wbd8_clp.gpkg
+-rw-r--r--. 1 cades cades 128K Jan 22 04:33 wbd_buffered.gpkg
+
+##########################################################################
+convert gpkg to filegdb 11140302 - production package
+##########################################################################
+Sun Jan 22 11:37:06 UTC 2023
+done. output is /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302/filegdb.zip
+TTTime 43.prod_filegdb = 28 sec
+Cumulative_Time = 7832sec
+11140302 production output...
+  adding: 11140302/hydroTable_rp_bf_lmtdischarge_cda.csv (deflated 85%)
+  adding: 11140302/rem_zeroed_masked_healed.tif (deflated 7%)
+  adding: 11140302/filegdb.zip (stored 0%)
+  adding: 11140302/hydroTable.csv (deflated 72%)
+  adding: 11140302/demDerived_reaches_split_filtered_addedAttributes_crosswalked.gpkg (deflated 89%)
+  adding: 11140302/demDerived_streamPixels.tif (deflated 85%)
+  adding: 11140302/gw_catchments_reaches_filtered_addedAttributes_crosswalked.gpkg (deflated 86%)
+  adding: 11140302/crosswalk_table.csv (deflated 83%)
+11140302 output /home/yxl/test/fim3/region6/prod/11140302.zip
+11140302 removediskspace /mnt/CADES_CEPH/pin2flood/cache/outputs/11140302/11140302
+TTTime 44.prod_zipoutput = 112 sec
+Cumulative_Time = 7916sec
+	Command being timed: "/srv/test/cahaba/src/run_by_unit.sh 11140302"
+	User time (seconds): 9113.80
+	System time (seconds): 1598.22
+	Percent of CPU this job got: 135%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:11:55
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 58212260
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 47
+	Minor (reclaiming a frame) page faults: 160864366
+	Voluntary context switches: 2161046
+	Involuntary context switches: 14779
+	Swaps: 0
+	File system inputs: 9759280
+	File system outputs: 410190552
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

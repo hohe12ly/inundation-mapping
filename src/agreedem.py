@@ -54,11 +54,12 @@ def agreedem(rivers_raster, dem, output_raster, workspace, grass_workspace, buff
     smo_profile = dem_profile.copy()
     smo_profile.update(nodata = 0)
     smo_profile.update(dtype = 'float32')
+#    smo_profile.update(BIGTIFF = 'Yes')
     smo_output = os.path.join(workspace, 'agree_smogrid.tif')
 
     # Windowed reading/calculating/writing
     with rasterio.Env():
-        with rasterio.open(smo_output, 'w', **smo_profile) as raster:
+        with rasterio.open(smo_output, 'w', **smo_profile, BIGTIFF='YES') as raster:
             for ji, window in elev.block_windows(1):
                 # read elevation data and mask information
                 elev_data_window = elev.read(1, window = window)
@@ -115,7 +116,7 @@ def agreedem(rivers_raster, dem, output_raster, workspace, grass_workspace, buff
 
     # Windowed reading/calculating/writing
     with rasterio.Env():
-        with rasterio.open(buf_output, 'w', **buf_profile) as raster:
+        with rasterio.open(buf_output, 'w', **buf_profile, BIGTIFF='YES') as raster:
             for ji, window in elev.block_windows(1):
                 # read distance, allocation, and elevation datasets
                 vectdist_data_window = vectdist.read(1, window = window)
@@ -165,7 +166,7 @@ def agreedem(rivers_raster, dem, output_raster, workspace, grass_workspace, buff
 
     # Windowed reading/calculating/writing
     with rasterio.Env():
-        with rasterio.open(agree_output, 'w', **agree_profile) as raster:
+        with rasterio.open(agree_output, 'w', **agree_profile, BIGTIFF='YES') as raster:
             for ji, window in elev.block_windows(1):
                 # Read elevation data and mask, distance and allocation grids, and river data.
                 elev_data_window = elev.read(1, window = window)

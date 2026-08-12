@@ -4,7 +4,7 @@ import os
 import shutil 
 import grass.script as gscript
 import argparse
-
+import subprocess # ornl
 
 def r_grow_distance(input_raster, grass_workspace, proximity_dtype, allocation_dtype):
     '''
@@ -63,16 +63,21 @@ def r_grow_distance(input_raster, grass_workspace, proximity_dtype, allocation_d
     # Dtype for proximity always float32.
     proximity_filename = input_raster_name + '_dist.tif'
     output_proximity_path=os.path.join(input_raster_directory,proximity_filename)
-    gscript.run_command('r.out.gdal', flags = 'cf', input = proximity_grass_name, output = output_proximity_path, format = 'GTiff', quiet = True, type = proximity_dtype, createopt = 'COMPRESS=LZW')
+    # ornl
+    #gscript.run_command('r.out.gdal', flags = 'cf', input = proximity_grass_name, output = output_proximity_path, format = 'GTiff', quiet = True, type = proximity_dtype, createopt = 'COMPRESS=LZW')
+    gscript.run_command('r.out.gdal', flags = 'cf', input = proximity_grass_name, output = output_proximity_path, format = 'GTiff', quiet = True, type = proximity_dtype, createopt = 'COMPRESS=LZW,BIGTIFF=YES')
 
     # Export allocation raster. Saved to same directory as input raster. 
     # Dtype assigned via the allocation_dtype input.
     allocation_filename = input_raster_name + '_allo.tif'
     output_allocation_path = os.path.join(input_raster_directory, allocation_filename)
-    gscript.run_command('r.out.gdal', flags = 'cf', input = allocation_grass_name, output = output_allocation_path, format = 'GTiff', quiet = True, type = allocation_dtype, createopt = 'COMPRESS=LZW')
+    # ornl
+    #gscript.run_command('r.out.gdal', flags = 'cf', input = allocation_grass_name, output = output_allocation_path, format = 'GTiff', quiet = True, type = allocation_dtype, createopt = 'COMPRESS=LZW')
+    gscript.run_command('r.out.gdal', flags = 'cf', input = allocation_grass_name, output = output_allocation_path, format = 'GTiff', quiet = True, type = allocation_dtype, createopt = 'COMPRESS=LZW,BIGTIFF=YES')
     
     # Close down temporary session and remove temporary workspace.
     temporary_session.close()
+    print('GRASSDISK', grass_workspace, subprocess.check_output(['du', '-hsc', grass_workspace]).split()[0].decode('utf-8')) # ornl
     shutil.rmtree(grass_gisdb)
     
     return output_proximity_path,output_allocation_path

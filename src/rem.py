@@ -120,6 +120,7 @@ def rel_dem(dem_fileName, pixel_watersheds_fileName, rem_fileName, thalweg_raste
     med_by_hydroid.columns = ['med_thal_elev']
     max_by_hydroid = merge_df.groupby(['HydroID']).max() # max value of all med_thal_elev for pixel catchments in each HydroID reach
     max_by_hydroid.columns = ['max_thal_elev']
+
     input_reaches = gpd.read_file(dem_reaches_filename)
     input_reaches = input_reaches.merge(min_by_hydroid, on='HydroID') # merge dataframes by HydroID variable
     input_reaches = input_reaches.merge(med_by_hydroid, on='HydroID') # merge dataframes by HydroID variable
@@ -141,7 +142,9 @@ def rel_dem(dem_fileName, pixel_watersheds_fileName, rem_fileName, thalweg_raste
 
         return(rem_window)
 
-    rem_rasterio_object = rasterio.open(rem_fileName,'w',**meta)  # Open rem_rasterio_object for writing to rem_fileName.
+    # ornl
+    #rem_rasterio_object = rasterio.open(rem_fileName,'w',**meta)  # Open rem_rasterio_object for writing to rem_fileName.
+    rem_rasterio_object = rasterio.open(rem_fileName,'w',**meta, BIGTIFF='YES')  # Open rem_rasterio_object for writing to rem_fileName.
     pixel_catchments_rasterio_object = rasterio.open(pixel_watersheds_fileName)  # Open pixel_catchments_rasterio_object
     dem_rasterio_object = rasterio.open(dem_fileName)
 

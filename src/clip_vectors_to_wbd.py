@@ -58,6 +58,9 @@ def subset_vector_layers(hucCode,nwm_streams_filename,nhd_streams_filename,nwm_l
         # Loop through the filled polygons and insert the new geometry
         for i in range(len(nwm_lakes_fill_holes)):
             nwm_lakes.loc[i,'geometry'] = nwm_lakes_fill_holes[i]
+            if not nwm_lakes_fill_holes[i].is_valid: # ornl
+                print("[ornl] WARN: lake shape newID=", nwm_lakes.iloc[i]['newID'], 'is NOT valid.') # ornl
+        nwm_lakes.set_geometry(col='geometry', inplace=True) # ornl: bugfix - AttributeError: 'Series' object has no attribute 'has_z'
         nwm_lakes.to_file(subset_nwm_lakes_filename,driver=getDriver(subset_nwm_lakes_filename),index=False)
     del nwm_lakes
 

@@ -230,8 +230,10 @@ def __inundate_in_huc(rem_array,catchments_array,crs,window_transform,rem_profil
         depths_profile.update(**out_raster_profile)
         inundation_profile.update(**out_raster_profile)
     elif out_raster_profile is None:
-        depths_profile.update(driver= 'GTiff', blockxsize=256, blockysize=256, tiled=True, compress='lzw')
-        inundation_profile.update(driver= 'GTiff',blockxsize=256, blockysize=256, tiled=True, compress='lzw')
+        #depths_profile.update(driver= 'GTiff', blockxsize=256, blockysize=256, tiled=True, compress='lzw')
+        depths_profile.update(driver= 'GTiff', blockxsize=256, blockysize=256, tiled=True, compress='lzw', BIGTIFF='YES') # ornl
+        #inundation_profile.update(driver= 'GTiff',blockxsize=256, blockysize=256, tiled=True, compress='lzw')
+        inundation_profile.update(driver= 'GTiff',blockxsize=256, blockysize=256, tiled=True, compress='lzw', BIGTIFF='YES') # ornl
     else:
         raise TypeError("Pass dictionary for output raster profiles")
 
@@ -295,7 +297,8 @@ def __inundate_in_huc(rem_array,catchments_array,crs,window_transform,rem_profil
     inundation_array = catchments_array.copy()
 
     # reset output values
-    depths_array[depths_array != depths_profile['nodata']] = 0
+    #depths_array[depths_array != depths_profile['nodata']] = 0 
+    depths_array.fill(depths_profile['nodata']) # set to nodata for all cells # ornl
     inundation_array[inundation_array != inundation_profile['nodata']] = inundation_array[inundation_array != inundation_profile['nodata']] * -1
 
     # make output arrays
@@ -359,7 +362,9 @@ def __go_fast_mapping(rem,catchments,catchmentStagesDict,inundation,depths):
         if cm in catchmentStagesDict:
 
             depth = catchmentStagesDict[cm] - r
-            depths[i] = max(depth,0) # set negative depths to 0
+            #depths[i] = max(depth,0) # set negative depths to 0
+            if depth>=0: # ornl
+                depths[i] = depth # otherwise, nodata # ornl
 
             if depths[i] > 0: # set positive depths to positive
                 inundation[i] *= -1

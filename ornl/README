@@ -1,0 +1,201 @@
+
+[20250102] left join site gpkg and analysis csv
+
+(inunmap) cloud@orc-compute:/mnt/CADES_CEPH/netzero/inunmap/outputs/stats$ ogr2ogr -dialect OGRSQL -sql "select all_sites.*, cast(s.ClusterLab as integer) as ClusterLab2, cast(s.AREA as float) as AREA2, cast(s.RP2 as float) as RP2,  cast(s.RP5 as float) as RP5,  cast(s.RP10 as float) as RP10,  cast(s.RP20 as float) as RP20,  cast(s.RP25 as float) as RP25,  cast(s.RP50 as float) as RP50,  cast(s.RP100 as float) as RP100, cast(s.RP200 as float) as RP200 from all_sites left join 'site_inun_ratio_PVC_All_256Sites_GeomFixed_epsg5070.csv'.site_inun_ratio_PVC_All_256Sites_GeomFixed_epsg5070 as s on all_sites.ClusterLab = s.ClusterLab" site_inun_ratio_PVC_All_256Sites_GeomFixed_epsg5070.gpkg ../../inputs/PVC_All_256Sites_GeomFixed_epsg5070.gpkg -nln all_sites
+
+
+(inunmap) cloud@orc-compute:/mnt/CADES_CEPH/netzero/inunmap/outputs/stats$ ogr2ogr -dialect OGRSQL -sql "select siteshape.*, cast(s.ClusterLab as integer) as ClusterLab2, cast(s.AREA as float) as AREA2, cast(s.RP2 as float) as RP2,  cast(s.RP5 as float) as RP5,  cast(s.RP10 as float) as RP10,  cast(s.RP20 as float) as RP20,  cast(s.RP25 as float) as RP25,  cast(s.RP50 as float) as RP50,  cast(s.RP100 as float) as RP100, cast(s.RP200 as float) as RP200 from siteshape left join 'site_inun_ratio_PV_14GW_Sites_GeomFixed_epsg5070.csv'.site_inun_ratio_PV_14GW_Sites_GeomFixed_epsg5070 as s on siteshape.ClusterLab = s.ClusterLab" site_inun_ratio_PV_14GW_Sites_GeomFixed_epsg5070.gpkg ../../inputs/PV_14GW_Sites_GeomFixed_epsg5070.gpkg -nln siteshape
+
+(inunmap) cloud@orc-compute:/mnt/CADES_CEPH/netzero/inunmap/outputs/stats$ ogr2ogr -dialect OGRSQL -sql "select all_sites.*, cast(s.ClusterLab as integer) as ClusterLab2, cast(s.AREA as float) as AREA2, cast(s.RP2 as float) as RP2,  cast(s.RP5 as float) as RP5,  cast(s.RP10 as float) as RP10,  cast(s.RP20 as float) as RP20,  cast(s.RP25 as float) as RP25,  cast(s.RP50 as float) as RP50,  cast(s.RP100 as float) as RP100, cast(s.RP200 as float) as RP200 from all_sites left join 'site_inun_ratio_PVC_All_Potential_Sites_epsg5070.csv'.site_inun_ratio_PVC_All_Potential_Sites_epsg5070 as s on all_sites.ClusterLab = s.ClusterLab" site_inun_ratio_PVC_All_Potential_Sites_epsg5070.gpkg ../../inputs/PVC_All_Potential_Sites_epsg5070.gpkg -nln all_sites
+
+
+(inunmap) cloud@orc-compute:/mnt/CADES_CEPH/netzero/inunmap/outputs/stats$ ogr2ogr -dialect OGRSQL -sql "select siteshape.*, cast(s.ClusterLab as integer) as ClusterLab2, cast(s.AREA as float) as AREA2, cast(s.RP2 as float) as RP2,  cast(s.RP5 as float) as RP5,  cast(s.RP10 as float) as RP10,  cast(s.RP20 as float) as RP20,  cast(s.RP25 as float) as RP25,  cast(s.RP50 as float) as RP50,  cast(s.RP100 as float) as RP100, cast(s.RP200 as float) as RP200 from siteshape left join 'site_inun_ratio_PVC_14GW_Footprints_Dec20_epsg5070.csv'.site_inun_ratio_PVC_14GW_Footprints_Dec20_epsg5070 as s on siteshape.ClusterLab = s.ClusterLab" site_inun_ratio_PVC_14GW_Footprints_Dec20_epsg5070.gpkg ../../inputs/PVC_14GW_Footprints_Dec20_epsg5070.gpkg -nln siteshape
+
+[20251023] HAND overview for NCPHR
+- find huc8 list in /mnt/CADES_CEPH/fim3/data/huc8_list_ncphr.txt. Use the full list.
+- unzip REM
+cloud@orc-compute:/mnt/CADES_CEPH/pin2flood/ov_ncphr$ for h in 03010103 03010104 03030002 03030003 03030004 03040101 03040102 03040103 03040104 03040105 03040201 03040202 03040203 03040204 03050101 03050102 03050103 03050105 03050109 03060101 03060102 05050001 06010102 06010103 06010105 06010106 06010107 06010108 06010201 06010202 06010203 06010204 06020002 06020003 03150101; do unzip ../prod/$h.zip $h/rem_zeroed_masked_healed.tif; done
+
+- create filelist
+cloud@orc-compute:/mnt/CADES_CEPH/pin2flood/ov_ncphr$ for h in 03010103 03010104 03030002 03030003 03030004 03040101 03040102 03040103 03040104 03040105 03040201 03040202 03040203 03040204 03050101 03050102 03050103 03050105 03050109 03060101 03060102 05050001 06010102 06010103 06010105 06010106 06010107 06010108 06010201 06010202 06010203 06010204 06020002 06020003 03150101; do echo "$h/rem_zeroed_masked_healed.tif"; done>>hand_filelist
+
+- create VRT:
+(inunmap) cloud@orc-compute:/mnt/CADES_CEPH/pin2flood/ov_ncphr$ gdalbuildvrt -input_file_list hand_filelist hand_ncphr.vrt
+
+- overview geotiff:
+(inunmap) cloud@orc-compute:/mnt/CADES_CEPH/pin2flood/ov_ncphr$ gdal_translate -outsize 3% 0 -r bilinear hand_ncphr.vrt hand_ncphr_overview_wbd.tif
+(inunmap) cloud@orc-compute:/mnt/CADES_CEPH/pin2flood/ov_ncphr$ gdalwarp -cutline /mnt/CADES_CEPH/netzero/ncphr/counties/ncphr_county_boundary_epsg5070.gpkg  -crop_to_cutline -wo CUTLINE_ALL_TOUCHED=TRUE -of "GTiff" -overwrite -co "BLOCKXSIZE=512" -co "BLOCKYSIZE=512" -co "TILED=YES" -co "COMPRESS=LZW" -co "BIGTIFF=YES" hand_ncphr_overview_wbd.tif hand_ncphr_overview_counties.tif
+
+
+[20251022] HAND run for NCPHR
+do NOT use tmux. In tmux session, mpiexec failed to find its libs. use `nohup batchrun_ceph.sh &` instead.
+
+[20241230] generate HAND overview raster for TVA
+gdal_translate -outsize 3% 0 -r bilinear tva_hand.vrt tva_hand_overview_wbd.tif
+gdalwarp -cutline TVA_PSA_singleshape_epsg5070.gpkg -crop_to_cutline -wo CUTLINE_ALL_TOUCHED=TRUE -of "GTiff" -overwrite -co "BLOCKXSIZE=512" -co "BLOCKYSIZE=512" -co "TILED=YES" -co "COMPRESS=LZW" -co "BIGTIFF=YES" tva_hand_overview_wbd.tif tva_hand_overview.tif
+
+[] software environment setup (conda fim3)
+- orc:/mnt/CADES_CEPH/fim3/FIM3.md
+
+[] find tile list for each HUC8
+#!/bin/bash # modifications
+# 1. had to build GRASS 7.8 from src
+# 2. streamnet needs to specify -netlyrname . taudem code to auto get lyrname is wrong
+# 3. use taudem 5.3.8 (github)'s gagewatershed, not 5.3.7
+
+[] TVA 
+# TVA (20241223): generate VRTs for 89 HUC8s covering TVA
+#   make sure the dem tile coverage file has the same projection as the DEM tiles: EPSG:5070
+#   TVA DEM downloaded from usgs, output proj is EPSG:5070. each title has no NODATA.
+#   For USGS downloaded DEMs, we must specify nodata when generating VRT: -vrtnodata "-9999"
+#   1. create the HUC8 list that covers TVA.
+      - sunsphere: process the TVA_PSA.gpkg with /mnt/data/home/yxl/nz-armada/fim_netzero/bin/simplify_tva_psa.py to generate TVA_PSA_singleshape.gpkg and TVA_PSA_singleshape_epsg5070.gpkg
+      - on my laptop, use exttract_by_location in qgis to intersect TVA shape with WBD's WBDHU8 layer to generate wbd_huc8_tva.gpkg. I manually removed a few HUC8s that have only tiny overlapped area with TVA.
+      - convert wbd_huc8_tva.gpkg to wbd_huc8_tva.csv
+      - use pandas to generate HUC8 list:
+        df=pd.read_csv('wbd_huc8_tva.csv', dtype={'HUC8':str})
+        l=df['HUC8'].to_list()
+        l.sort()
+        l # save to 
+['03150101', '03150102', '03150103', '03150105', '03150106', '03160101', '03160102', '03160103', '03160104', '03160105', '03160106', '03160108', '03160109', '03160110', '03160111', '03160202', '03170001', '03180001', '03180002', '05110001', '05110002', '05110003', '05110004', '05110006', '05130101', '05130103', '05130104', '05130105', '05130106', '05130107', '05130108', '05130201', '05130202', '05130203', '05130204', '05130205', '05130206', '05140205', '06010101', '06010102', '06010103', '06010104', '06010105', '06010106', '06010107', '06010108', '06010201', '06010204', '06010205', '06010206', '06010207', '06010208', '06020001', '06020002', '06020003', '06020004', '06030001', '06030002', '06030003', '06030004', '06030005', '06030006', '06040001', '06040002', '06040003', '06040004', '06040005', '06040006', '08010100', '08010201', '08010202', '08010203', '08010204', '08010205', '08010206', '08010207', '08010208', '08010209', '08010210', '08010211', '08030201', '08030202', '08030203', '08030204', '08030205', '08060201']
+
+#   2. create dem tile coverage shp to record its bbox on sunsphere, where data is downloaded
+(lagllama-fewshots) [yxl@sunsphere lidar]$ conda deactivate
+(base) [yxl@sunsphere lidar]$ conda activate rapids-23.06
+(rapids-23.06) [yxl@sunsphere lidar]$ echo "wkt,filename,llx,lly,urx,ury" >/mnt/data/home/yxl/nz-armada/data/dem/tva_3musgs_coverage.csv
+(rapids-23.06) [yxl@sunsphere lidar]$ cd /mnt/data/home/yxl/nz-armada
+(rapids-23.06) [yxl@sunsphere nz-armada]$ grep -E "^download tile: " logs/usgs-download-test.log >logs/download_info.log
+(rapids-23.06) [yxl@sunsphere nz-armada]$ while read dline; do f=`echo "$dline"|awk '{print $3}'`; llx=`echo "$dline" |awk -F'tile_minx=' '{print $2}' |awk '{print $1}'`; lly=`echo "$dline" |awk -F'tile_miny=' '{print $2}' |awk '{print $1}'`; urx=`echo "$dline" |awk -F'tile_maxx=' '{print $2}' |awk '{print $1}'`; ury=`echo "$dline" |awk -F'tile_maxy=' '{print $2}' |awk '{print $1}'`; echo "$f : llx=$llx lly=$lly urx=$urx ury=$ury"; echo "\"POLYGON(($llx $lly,$llx $ury,$urx $ury,$urx $lly,$llx $lly))\", $f, $llx, $lly, $urx, $ury"; done<logs/download_info.log >>/mnt/data/home/yxl/nz-armada/data/dem/tva_3musgs_coverage.csv # this step takes ~30minutes
+(rapids-23.06) [yxl@sunsphere nz-armada]$ ogr2ogr -a_srs EPSG:5070 /mnt/data/home/yxl/nz-armada/data/dem/tva_3musgs_coverage.gpkg -dialect sqlite -sql "SELECT GeomFromText(wkt),filename,llx,lly,urx,ury from tva_3musgs_coverage" /mnt/data/home/yxl/nz-armada/data/dem/tva_3musgs_coverage.csv -nln tva_3musgs_coverage
+
+#   3. generate VRT for each of the 86 TVA HUC8s
+# cd /mnt/CADES_CEPH/fim3
+# use 5,000m buffer, wider than wbd_buffer value in cahaba/ornl/params_calibrated.env
+(fim3) cloud@orc-compute:/mnt/CADES_CEPH/fim3/data$ time python ../cahaba/ornl/find_tiles_by_huc.py ../../netzero/tva_3musgs_coverage.gpkg filename inputs/wbd/WBD_National.gpkg WBDHU8 HUC8 huc8vrt 5000 "03150101 03150102 03150103 03150105 03150106 03160101 03160102 03160103 03160104 03160105 03160106 03160108 03160109 03160110 03160111 03160202 03170001 03180001 03180002 05110001 05110002 05110003 05110004 05110006 05130101 05130103 05130104 05130105 05130106 05130107 05130108 05130201 05130202 05130203 05130204 05130205 05130206 05140205 06010101 06010102 06010103 06010104 06010105 06010106 06010107 06010108 06010201 06010204 06010205 06010206 06010207 06010208 06020001 06020002 06020003 06020004 06030001 06030002 06030003 06030004 06030005 06030006 06040001 06040002 06040003 06040004 06040005 06040006 08010100 08010201 08010202 08010203 08010204 08010205 08010206 08010207 08010208 08010209 08010210 08010211 08030201 08030202 08030203 08030204 08030205 08060201"
+real	2m53.196s
+(fim3) cloud@orc-compute:/mnt/CADES_CEPH/fim3/data$ cd huc8vrt/
+(fim3) cloud@orc-compute:/mnt/CADES_CEPH/fim3/data/huc8vrt$ d=/mnt/CADES_CEPH/netzero/dem/3m_usgs
+(fim3) cloud@orc-compute:/mnt/CADES_CEPH/fim3/data/huc8vrt$ for f in `ls *_tilelist.txt`; do fhuc=`basename $f .txt`; while read fn; do fpath=$d/$fn; echo "$fpath"; done<$f >$fhuc.filelist; done
+(fim3) cloud@orc-compute:/mnt/CADES_CEPH/fim3/data/huc8vrt$ for f in `ls *.filelist`; do huc=`echo "$f"|awk -F_ '{print $1}'`;  echo "gdalbuildvrt -input_file_list $f -vrtnodata \"-9999\" ${huc}.vrt"; gdalbuildvrt -q -input_file_list $f -vrtnodata "-9999" ${huc}.vrt; done
+
+#   4. cahaba/src/clip_vectors_to_wbd.py: bugfix: AttributeError: 'Series' object has no attribute 'has_z'
+- HUC8s with issue:
+(fim3) cloud@orc-compute:/mnt/CADES_CEPH/fim3/cahaba/ornl/logs$ s=""; for h in `grep  -P "1\t0\t/mnt/CADES" gnuparallel/tva_86_huc8s.log |awk '{print $(NF-4)}'`; do s="$s $h"; done
+(fim3) cloud@orc-compute:/mnt/CADES_CEPH/fim3/cahaba/ornl/logs$ echo "$s"
+ 03150101 03160103 03160104 03160202 03170001 05110002 05110003 05110004 06010101 06010107 06010206
+(fim3) cloud@orc-compute:/mnt/CADES_CEPH/fim3/cahaba/ornl/logs$ for d in $s; do echo "=== $h ==="; ls /mnt/CADES_CEPH/pin2flood/cache/outputs/$d/$d; done
+=== 06010206 ===
+03150101_rawdem.tif  wbd.gpkg  wbd_buffered.gpkg
+=== 06010206 ===
+03160103_rawdem.tif  wbd.gpkg  wbd_buffered.gpkg
+=== 06010206 ===
+03160104_rawdem.tif  wbd.gpkg  wbd_buffered.gpkg
+=== 06010206 ===
+03160202_rawdem.tif  wbd.gpkg  wbd_buffered.gpkg
+=== 06010206 ===
+03170001_rawdem.tif  wbd.gpkg  wbd_buffered.gpkg
+=== 06010206 ===
+05110002_rawdem.tif  wbd.gpkg  wbd_buffered.gpkg
+=== 06010206 ===
+05110003_rawdem.tif  wbd.gpkg  wbd_buffered.gpkg
+=== 06010206 ===
+05110004_rawdem.tif  wbd.gpkg  wbd_buffered.gpkg
+=== 06010206 ===
+06010101_rawdem.tif  wbd.gpkg  wbd_buffered.gpkg
+=== 06010206 ===
+06010107_rawdem.tif  wbd.gpkg  wbd_buffered.gpkg
+=== 06010206 ===
+06010206_rawdem.tif  wbd.gpkg  wbd_buffered.gpkg
+
+-fix
+add line 63:         nwm_lakes.set_geometry(col='geometry', inplace=True) # ornl: bugfix - AttributeError: 'Series' object has no attribute 'has_z'
+
+- test
+(fim3) cloud@orc-compute:/mnt/CADES_CEPH/pin2flood/cache/outputs/06010206/06010206$ python3 -m memory_profiler /mnt/CADES_CEPH/fim3/cahaba/src/clip_vectors_to_wbd.py -d 06010206 -w /mnt/CADES_CEPH/fim3/data/inputs/nwm_hydrofabric/nwm_flows.gpkg -s /mnt/CADES_CEPH/fim3/data/inputs/nhdplus_vectors_aggregate/agg_nhd_streams_adj.gpkg -l /mnt/CADES_CEPH/fim3/data/inputs/nwm_hydrofabric/nwm_lakes.gpkg -r /mnt/CADES_CEPH/fim3/data/inputs/nld_vectors/huc2_levee_lines/nld_preprocessed_06.gpkg -g $outputHucDataDir/wbd.gpkg -f $outputHucDataDir/wbd_buffered.gpkg -m /mnt/CADES_CEPH/fim3/data/inputs/nwm_hydrofabric/nwm_catchments.gpkg -y /mnt/CADES_CEPH/fim3/data/inputs/nhdplus_vectors_aggregate/agg_nhd_headwaters_adj.gpkg -v /mnt/CADES_CEPH/fim3/data/inputs/landsea/water_polygons_us.gpkg -c $outputHucDataDir/NHDPlusBurnLineEvent_subset.gpkg -z $outputHucDataDir/nld_subset_levees.gpkg -a $outputHucDataDir/nwm_lakes_proj_subset.gpkg -n $outputHucDataDir/nwm_catchments_proj_subset.gpkg -e $outputHucDataDir/nhd_headwater_points_subset.gpkg -b $outputHucDataDir/nwm_subset_streams.gpkg -x $outputHucDataDir/LandSea_subset.gpkg -extent FR -gl /mnt/CADES_CEPH/fim3/data/inputs/landsea/gl_water_polygons.gpkg -lb 20 -wb 5000
+Subsetting NWM Lakes for HUC8 06010206
+Subsetting NLD levee lines for HUC8 06010206
+Subsetting NHD Headwater Points for HUC8 06010206
+Querying NHD Streams for HUC8 06010206
+/mnt/CADES_CEPH/fim3/cahaba/src/clip_vectors_to_wbd.py:97: UserWarning: `keep_geom_type=True` in overlay resulted in 1 dropped geometries of different geometry types than df1 has. Set `keep_geom_type=False` to retain all geometries
+  threshold_segments = gpd.overlay(nhd_streams, wbd_buffer, how='symmetric_difference')
+(fim3) cloud@orc-compute:/mnt/CADES_CEPH/pin2flood/cache/outputs/06010206/06010206$ ls
+06010206_rawdem.tif               nwm_catchments_proj_subset.gpkg  t_n1.gpkg  wbd_buffered.gpkg
+NHDPlusBurnLineEvent_subset.gpkg  nwm_lakes_proj_subset.gpkg       t_n2.gpkg
+nhd_headwater_points_subset.gpkg  nwm_subset_streams.gpkg          wbd.gpkg
+
+#    5. TVA 86 HUC8s computation summary:
+- computing 84 (1 is already computed as a test HUC8; 1 was computed when I computed KY flood) took a bit over 41 hours:
+  [Mon Dec 23 22:04:59 EST 2024] GNU PARALLEL starting tva_86_huc8s ...
+  [Wed Dec 25 15:13:47 EST 2024] GNU PARALLEL finished tva_86_huc8s.
+- re-computing the 11 HUC8s with the `has_z` issue took a bit over 5 hours:
+  [Wed Dec 25 16:43:02 EST 2024] GNU PARALLEL starting tva_86_huc8s ...
+  [Wed Dec 25 21:52:28 EST 2024] GNU PARALLEL finished tva_86_huc8s.
+- in total, 47 hours, i.e., 2 days.
+
+[] fathom3m for Texas
+# texas (202211): generate VRTs for 209 HUC8s covering TX
+# changes: 
+#   added buffer size when identifying tiles: 0.1 (~10km, double of wbd buffer)
+# note: even if we use the orig USGS EPSG:4269 WBD (similar projection with fathom3m's EPSG:4326), diff from NWM Hydrofabric (EPSG:5070, /home/yxl/test/fim3/inputs/wbd/WBD_National.gpkg), the tile set should be all right.
+source /srv/sw/env.fim3
+mkdir /home/yxl/test/fim3/huc8vrt
+python /srv/test/cahaba/ornl/find_tiles_by_huc.py /srv/test/fathom3m/fathom3m_coverage_tacc.shp filename /srv/data/wbd/WBD/WBD.gdb WBDHU8 HUC8 /home/yxl/test/fim3/huc8vrt 0.1 "11140102 11130201 11140201 11140106 11140301 11140303 11140305 11140306 11140307 12010001 12010002 12010003 12020001 12020002 12020004 12020005 12030101 12030102 12030103 12030104 12030105 12030106 12030107 12030108 12030109 12030201 12060201 12060202 12060204 12070201 11140302 12010004 11130210 11140101 11140206 11140304 12020003 12020006 12020007 12030202 12030203 12040101 12040102 12040103 12040104 12040202 12040203 12040204 12040205 12070101 12070102 12070103 12070104 12090301 12090302 12090401 12090402 12100102 12100401 12100402 12100403 12040201 12010005 11080006 11090101 11090104 11120102 11090201 11100102 11120202 11120302 11120304 11130102 11130301 11100101 11090105 11090106 11100103 11100104 11100202 11120103 11120104 11120201 11120301 11130103 11130104 11130105 11130204 11130205 11130206 11130207 11130209 12050003 12050004 12050006 12050007 12060101 12060102 12060103 12060104 12060105 12070202 12080002 12080007 12080008 12090101 12090105 12090106 12090107 12090108 11090102 11090103 11120101 12050001 12050002 12050005 12080001 12080003 12080004 12080006 11100201 11100203 11120105 11130101 13060011 13030102 12080005 12090102 12090103 12090104 12090109 12090110 12090202 12090204 12090206 13040100 13040201 13040202 13040203 13040204 13040205 13040206 13040207 13040208 13040209 13040210 13040211 13040212 13040301 13070002 13070003 13070004 13070005 13070006 13070008 13070009 13070010 13070011 13070012 13050003 13050004 13070001 13070007 12090203 12100201 12100303 12100404 12100405 12100406 12100407 12110101 12110102 12110103 12110104 12110105 12110106 12110107 12110108 12110110 12110111 12110201 12110202 12110203 12110204 12110205 12110206 12110207 12110208 13040302 13040303 13080001 13080002 13080003 13090001 13090002 12060203 12070203 12070204 12070205 12090201 12090205 12100202 12100203 12100204 12100301 12100304 12110109 12100101 12100302"
+# turns out, adding 10km buffer produces the save tile set for each HUC8 in TX.
+cd /home/yxl/test/fim3/huc8vrt
+for f in `ls *_tilelist.txt`; do fhuc=`basename $f .txt`; while read fn; do fpath=/home/yxl/data/fathom3m/dem/$fn; echo "$fpath"; done<$f >$fhuc.filelist; done
+for f in `ls *.filelist`; do huc=`echo "$f"|awk -F_ '{print $1}'`;  echo "gdalbuildvrt -input_file_list $f ${huc}_fathom3m.vrt"; gdalbuildvrt -input_file_list $f ${huc}_fathom3m.vrt; done
+
+# texas (202203): generate VRTs
+source /srv/sw/env.fim3
+mkdir /home/yxl/test/fim3/huc8vrt
+python find_tiles_by_huc.py /srv/test/fathom3m/fathom3m_coverage_tacc.shp filename /srv/data/wbd/WBD/WBD.gdb WBDHU8 HUC8 /home/yxl/test/fim3/huc8vrt "11140102 11130201 11140201 11140106 11140301 11140303 11140305 11140306 11140307 12010001 12010002 12010003 12020001 12020002 12020004 12020005 12030101 12030102 12030103 12030104 12030105 12030106 12030107 12030108 12030109 12030201 12060201 12060202 12060204 12070201 11140302 12010004 11130210 11140101 11140206 11140304 12020003 12020006 12020007 12030202 12030203 12040101 12040102 12040103 12040104 12040202 12040203 12040204 12040205 12070101 12070102 12070103 12070104 12090301 12090302 12090401 12090402 12100102 12100401 12100402 12100403 12040201 12010005 11080006 11090101 11090104 11120102 11090201 11100102 11120202 11120302 11120304 11130102 11130301 11100101 11090105 11090106 11100103 11100104 11100202 11120103 11120104 11120201 11120301 11130103 11130104 11130105 11130204 11130205 11130206 11130207 11130209 12050003 12050004 12050006 12050007 12060101 12060102 12060103 12060104 12060105 12070202 12080002 12080007 12080008 12090101 12090105 12090106 12090107 12090108 11090102 11090103 11120101 12050001 12050002 12050005 12080001 12080003 12080004 12080006 11100201 11100203 11120105 11130101 13060011 13030102 12080005 12090102 12090103 12090104 12090109 12090110 12090202 12090204 12090206 13040100 13040201 13040202 13040203 13040204 13040205 13040206 13040207 13040208 13040209 13040210 13040211 13040212 13040301 13070002 13070003 13070004 13070005 13070006 13070008 13070009 13070010 13070011 13070012 13050003 13050004 13070001 13070007 12090203 12100201 12100303 12100404 12100405 12100406 12100407 12110101 12110102 12110103 12110104 12110105 12110106 12110107 12110108 12110110 12110111 12110201 12110202 12110203 12110204 12110205 12110206 12110207 12110208 13040302 13040303 13080001 13080002 13080003 13090001 13090002 12060203 12070203 12070204 12070205 12090201 12090205 12100202 12100203 12100204 12100301 12100304 12110109 12100101 12100302"
+cd /home/yxl/test/fim3/huc8vrt
+for f in `ls *_tilelist.txt`; do fhuc=`basename $f .txt`; while read fn; do fpath=/home/yxl/data/fathom3m/dem/$fn; echo "$fpath"; done<$f >$fhuc.filelist; done
+for f in `ls *.filelist`; do huc=`echo "$f"|awk -F_ '{print $1}'`;  echo "gdalbuildvrt -input_file_list $f ${huc}_fathom3m.vrt"; gdalbuildvrt -input_file_list $f ${huc}_fathom3m.vrt; done
+
+# region 6: generate VRTs
+source /srv/sw/env.fim3
+mkdir /home/yxl/test/fim3/huc8vrt
+python find_tiles_by_huc.py /srv/test/fathom3m/fathom3m_coverage_tacc.shp filename /srv/data/wbd/WBD/WBD.gdb WBDHU8 HUC8 /home/yxl/test/fim3/huc8vrt "12030105 12030108 12030109 12030201 12060202 12060203 12060204 12070101 12070102 12070103 12070104 12070201 12070202 12070203 12070204 12070205 12090106 12090107 12090109 12090110 12090201 12090204 12090205 12090206 12090301 12100102 12100201 12100202 12100203 12100204 12100301 12100303 12100304 12100401 12100402 12100403 12100404 12100405 12100406 12110105 12110106 12110107 12110108 12110109 12110110 12110111 12090203 12100101 12100302"
+cd /home/yxl/test/fim3/huc8vrt
+for f in `ls *_tilelist.txt`; do fhuc=`basename $f .txt`; while read fn; do fpath=/home/yxl/data/fathom3m/dem/$fn; echo "$fpath"; done<$f >$fhuc.filelist; done
+for f in `ls *.filelist`; do huc=`echo "$f"|awk -F_ '{print $1}'`;  echo "gdalbuildvrt -input_file_list $f ${huc}_fathom3m.vrt"; gdalbuildvrt -input_file_list $f ${huc}_fathom3m.vrt; done
+
+# fathom3m HUC8 12090205
+# change ornl/fim_run.sh: 
+#   export input_WBD_gdb=$inputDataDir/wbd/WBD_National.gpkg
+# change src/run_by_unit.sh: 
+#   input_DEM=/home/yxl/test/fim3/tmp/12090205_fathom3m.tif # for fathom3m DEM test
+mkdir /dev/shm/fim3
+nohup ./fim_run.sh -u 12090205 -c ./params_calibrated.env -n 12090205 -e FR >/dev/shm/fim3/12090205.log 2>&1 &
+nohup ./fim_run.sh -u 12040201 -c ./params_calibrated.env -n 12040201 -e FR >/dev/shm/fim3/12040201.log 2>&1 &
+
+# tnris1m HUC12 120902050305
+# DEM reprojection
+cd /home/yxl/test/fim3
+gdalwarp -of GTiff -co "BIGTIFF=YES" -t_srs epsg:5070 -r cubic tnris_stratmap-2017-50cm-central-texas_120902050305_buf5km.vrt tnris_stratmap-2017-50cm-central-texas_120902050305_buf5km_epsg5070.tif
+# WBD: add included_huc12.lst to /home/yxl/test/fim3/inputs/huc_lists/
+# WBD: use my WBD gpkg format (fiona doesn't handle filegdb) to include HUC12
+/srv/data/wbd/WBD
+ogr2ogr -t_srs epsg:5070 -f GPKG WBD.gpkg WBD.gdb WBDHU2 WBDHU4 WBDHU6 WBDHU8 WBDHU10 WBDHU12
+# change ornl/fim_run.sh: 
+#   export input_WBD_gdb=/srv/data/wbd/WBD/WBD.gpkg
+# change src/run_by_unit.sh: 
+#   input_DEM=/home/yxl/test/fim3/tnris_stratmap-2017-50cm-central-texas_120902050305_buf5km_epsg5070.tif # for tnris1m DEM test
+nohup ./fim_run.sh -u 120902050305 -c ./params_calibrated.env.1m_120902050305 -n 120902050305 -e FR >/dev/shm/fim3/1m_120902050305.log 2>&1 &
+
+# fathom3m data prep
+for f in n30w99 n30w98 n29w99 n29w98 ; do echo "/home/yxl/data/fathom3m/dem/$f.tif"; done>12090205.filelist
+gdalbuildvrt -input_file_list 12090205.filelist 12090205.vrt
+gdalwarp -of GTiff -co "COMPRESS=LZW" -co "BIGTIFF=YES" -co "TILED=YES" -t_srs epsg:5070 -r cubic ./12090205.vrt 12090205_fathom3m.tif
+
+# utility commands
+### convert to FileGDB
+ogr2ogr -f FileGDB 12090205_floodstack_1_80_1.gdb 12090205_floodstack_1_80_1.shp -nln floodextent -mapFieldType Integer64=Integer
+
+# check errors in log, after zip is produced
+cd /srv/test/cahaba/ornl/logs/region6
+for z in `ls /home/yxl/test/fim3/region6`; do h=`basename $z .zip`; a=`grep "Maximum TIFF file size exceeded" $h.log`; b=`grep "Exit status: 1" $h.log`; [ ! -z "$a" ] && echo "$h BIGTIFF issue"; [ ! -z "$b" ] && echo "h exit error"; done
+
+# inundation tool:
+python ../tools/inundation.py -r $datadir/$h/rem_zeroed_masked.tif -c $datadir/$h/gw_catchments_reaches_filtered_addedAttributes.tif -b $datadir/$h/gw_catchments_reaches_filtered_addedAttributes_crosswalked.gpkg -t $datadir/$h/hydroTable.csv -f $datadir/o/$h/test_forecast.csv -i $datadir/o/$h/inun_bin.tif -p $datadir/o/$h/inun_bin.gpkg -d $datadir/o/$h/inun_depth.tif

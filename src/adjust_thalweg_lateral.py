@@ -87,7 +87,9 @@ def adjust_thalweg_laterally(elevation_raster, stream_raster, allocation_raster,
     allocation_zone_raster_object = rasterio.open(allocation_raster)
     thalweg_object = rasterio.open(stream_raster)
 
-    dem_lateral_thalweg_adj_object = rasterio.open(dem_lateral_thalweg_adj, 'w', **meta)
+    ## ornl
+    # dem_lateral_thalweg_adj_object = rasterio.open(dem_lateral_thalweg_adj, 'w', **meta)
+    dem_lateral_thalweg_adj_object = rasterio.open(dem_lateral_thalweg_adj, 'w', **meta, BIGTIFF='YES')
 
     for ji, window in elevation_raster_object.block_windows(1):  # Iterate over windows, using dem_rasterio_object as template
         dem_window = elevation_raster_object.read(1,window=window)  # Define dem_window
