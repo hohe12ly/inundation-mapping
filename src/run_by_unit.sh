@@ -37,8 +37,8 @@ input_NHD_WBHD_layer=WBDHU$hucUnitLength
 #input_DEM=/home/yxl/test/fim3/tmp/12040201_fathom3m.tif # for fathom3m DEM test
 #input_DEM=/home/yxl/test/fim3/tmp/12070101_fathom3m.tif # for fathom3m DEM test
 ### ornl start: region 6
-#input_VRT=/home/yxl/test/fim3/huc8vrt/${hucNumber}_fathom3m.vrt # for fathom3m DEM test
-input_VRT=/mnt/CADES_CEPH/fim3/data/huc8vrt/${hucNumber}.vrt # for TVA DEM, NCPHR DEM
+input_VRT=/home/yxl/test/fim3/huc8vrt/${hucNumber}_fathom3m.vrt # for fathom3m DEM test
+#input_VRT=/mnt/CADES_CEPH/fim3/data/huc8vrt/${hucNumber}.vrt # for TVA DEM, NCPHR DEM
 #input_dem_resolutions="1.5 -1.5" # 5ft KY dem
 input_dem_resolutions="3 -3" # fathom3m; TVA DEM
 ### ornl end: region 6
@@ -505,13 +505,13 @@ Tcount 39.cleanup
 
 ## CREATE RP_BF_LIMITDISCHARGE PROPERTIES
 # TODO: uncomment for TX, OK, NM HUCs
-#echo -e $startDiv"generate return period, banfull, limiting discharge properties in HUC $hucNumber"$stopDiv
-#date -u
-#Tstart
-#[ ! -f $outputHucDataDir/hydroTable_rp_bf_lmtdischarge_cda.csv ] && \
-#python3 -m memory_profiler $srcDir/../ornl/rp_limitdischarge.py $hucNumber $outputRunDataDir
-#[ -f $outputHucDataDir/hydroTable_rp_bf.csv ] && rm -f $outputHucDataDir/hydroTable_rp_bf.csv
-#Tcount 40.rp_bf_limitdischarge
+echo -e $startDiv"generate return period, banfull, limiting discharge properties in HUC $hucNumber"$stopDiv
+date -u
+Tstart
+[ ! -f $outputHucDataDir/hydroTable_rp_bf_lmtdischarge_cda.csv ] && \
+python3 -m memory_profiler $srcDir/../ornl/rp_limitdischarge.py $hucNumber $outputRunDataDir
+[ -f $outputHucDataDir/hydroTable_rp_bf.csv ] && rm -f $outputHucDataDir/hydroTable_rp_bf.csv
+Tcount 40.rp_bf_limitdischarge
 
 ## CREATE HEALED HAND
 echo -e $startDiv"generate Healed HAND in HUC $hucNumber"$stopDiv
@@ -566,7 +566,7 @@ echo "$hucNumber production output..."
 odatadir=/mnt/CADES_CEPH/pin2flood/prod
 # TODO: add hydroTable_rp_bf_lmtdischarge_cda.csv for TX, OK, and NM HUCs
 # TODO: remove slopes_dinf.tif if not generated at step 20.dinfthalweg 
-zip -r $odatadir/${hucNumber}.zip ${hucNumber}/dem_meters.tif ${hucNumber}/rem_zeroed_masked_healed.tif ${hucNumber}/hydroTable.csv ${hucNumber}/src_full_crosswalked.csv ${hucNumber}/demDerived_reaches_split_filtered_addedAttributes_crosswalked.gpkg ${hucNumber}/demDerived_streamPixels.tif ${hucNumber}/gw_catchments_reaches_filtered_addedAttributes_crosswalked.gpkg ${hucNumber}/gw_catchments_reaches_filtered_addedAttributes.tif ${hucNumber}/crosswalk_table.csv # ${hucNumber}/slopes_dinf.tif  #  ${hucNumber}/hydroTable_rp_bf_lmtdischarge_cda.csv # ${hucNumber}/filegdb.zip 
+zip -r $odatadir/${hucNumber}.zip ${hucNumber}/dem_meters.tif ${hucNumber}/rem_zeroed_masked_healed.tif ${hucNumber}/hydroTable.csv ${hucNumber}/src_full_crosswalked.csv ${hucNumber}/demDerived_reaches_split_filtered_addedAttributes_crosswalked.gpkg ${hucNumber}/demDerived_streamPixels.tif ${hucNumber}/gw_catchments_reaches_filtered_addedAttributes_crosswalked.gpkg ${hucNumber}/gw_catchments_reaches_filtered_addedAttributes.tif ${hucNumber}/crosswalk_table.csv  ${hucNumber}/hydroTable_rp_bf_lmtdischarge_cda.csv # ${hucNumber}/slopes_dinf.tif  # ${hucNumber}/filegdb.zip 
 echo "$hucNumber output $odatadir/${hucNumber}.zip"
 
 # free disk space
