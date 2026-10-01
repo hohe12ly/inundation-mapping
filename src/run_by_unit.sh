@@ -517,12 +517,12 @@ Tcount 40.rp_bf_limitdischarge
 echo -e $startDiv"generate Healed HAND in HUC $hucNumber"$stopDiv
 date -u
 Tstart
+[ ! -f $outputHucDataDir/rem_zeroed_masked_healed.tif ] && \
+#gdal_calc.py --quiet --type=Float32 --overwrite --co "COMPRESS=LZW" --co "BIGTIFF=YES" --co "TILED=YES" -A $outputHucDataDir/rem_zeroed_masked.tif -B $outputHucDataDir/dem_meters.tif -C $outputHucDataDir/dem_thalwegCond.tif --calc="(A+B-C)*((A+B-C)>0)" --NoDataValue=$ndv --outfile=$outputHucDataDir/rem_zeroed_masked_healed.tif
 ## change on 12/06/2025: since we now use pre-burnin dem to compute HAND.
 # we also need to use it to compute healed HAND. in fact, that change should
 # make healed HAND unnecessary. but just to keep it.
-[ ! -f $outputHucDataDir/rem_zeroed_masked_healed.tif ] && \
 gdal_calc.py --quiet --type=Float32 --overwrite --co "COMPRESS=LZW" --co "BIGTIFF=YES" --co "TILED=YES" -A $outputHucDataDir/rem_zeroed_masked.tif -B $outputHucDataDir/dem_meters.tif -C $outputHucDataDir/dem_lateral_thalweg_adj.tif --calc="(A+B-C)*((A+B-C)>0)" --NoDataValue=$ndv --outfile=$outputHucDataDir/rem_zeroed_masked_healed.tif
-#gdal_calc.py --quiet --type=Float32 --overwrite --co "COMPRESS=LZW" --co "BIGTIFF=YES" --co "TILED=YES" -A $outputHucDataDir/rem_zeroed_masked.tif -B $outputHucDataDir/dem_meters.tif -C $outputHucDataDir/dem_thalwegCond.tif --calc="(A+B-C)*((A+B-C)>0)" --NoDataValue=$ndv --outfile=$outputHucDataDir/rem_zeroed_masked_healed.tif
 Tcount 41.handhealed
 
 ## CONVERT GPKG TO FILEGDB##

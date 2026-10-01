@@ -30,6 +30,8 @@ then
   usage
 fi
 
+#exit 0 # ORNL: stop for ORC maintenance; should uncomment in normal runs
+
 while [ "$1" != "" ]; do
 case $1
 in
