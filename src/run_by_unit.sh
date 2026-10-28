@@ -522,6 +522,7 @@ Tstart
 ## change on 12/06/2025: since we now use pre-burnin dem to compute HAND.
 # we also need to use it to compute healed HAND. in fact, that change should
 # make healed HAND unnecessary. but just to keep it.
+# verification on 10/07/2026: using the old or the following new hand healing produced the same results.
 gdal_calc.py --quiet --type=Float32 --overwrite --co "COMPRESS=LZW" --co "BIGTIFF=YES" --co "TILED=YES" -A $outputHucDataDir/rem_zeroed_masked.tif -B $outputHucDataDir/dem_meters.tif -C $outputHucDataDir/dem_lateral_thalweg_adj.tif --calc="(A+B-C)*((A+B-C)>0)" --NoDataValue=$ndv --outfile=$outputHucDataDir/rem_zeroed_masked_healed.tif
 Tcount 41.handhealed
 
@@ -563,10 +564,12 @@ echo "$hucNumber production output..."
 #zip -r /mnt/CADES_CEPH/pin2flood/prod/${hucNumber}.zip ${hucNumber}/hydroTable_rp_bf_lmtdischarge_cda.csv ${hucNumber}/rem_zeroed_masked_healed.tif ${hucNumber}/hydroTable.csv ${hucNumber}/demDerived_reaches_split_filtered_addedAttributes_crosswalked.gpkg ${hucNumber}/demDerived_streamPixels.tif ${hucNumber}/gw_catchments_reaches_filtered_addedAttributes_crosswalked.gpkg ${hucNumber}/crosswalk_table.csv ${hucNumber}/filegdb.zip 
 
 #odatadir=/mnt/CADES_CEPH/fim3/data/tmp
+#odatadir=/mnt/CADES_CEPH/pin2flood/test
+#zip -r $odatadir/${hucNumber}_full.zip ${hucNumber}
 odatadir=/mnt/CADES_CEPH/pin2flood/prod
 # TODO: add hydroTable_rp_bf_lmtdischarge_cda.csv for TX, OK, and NM HUCs
 # TODO: remove slopes_dinf.tif if not generated at step 20.dinfthalweg 
-zip -r $odatadir/${hucNumber}.zip ${hucNumber}/dem_meters.tif ${hucNumber}/rem_zeroed_masked_healed.tif ${hucNumber}/hydroTable.csv ${hucNumber}/src_full_crosswalked.csv ${hucNumber}/demDerived_reaches_split_filtered_addedAttributes_crosswalked.gpkg ${hucNumber}/demDerived_streamPixels.tif ${hucNumber}/gw_catchments_reaches_filtered_addedAttributes_crosswalked.gpkg ${hucNumber}/gw_catchments_reaches_filtered_addedAttributes.tif ${hucNumber}/crosswalk_table.csv  ${hucNumber}/hydroTable_rp_bf_lmtdischarge_cda.csv # ${hucNumber}/slopes_dinf.tif  # ${hucNumber}/filegdb.zip 
+zip -r $odatadir/${hucNumber}.zip ${hucNumber}/dem_meters.tif ${hucNumber}/rem_zeroed_masked_healed.tif ${hucNumber}/hydroTable.csv ${hucNumber}/src_full_crosswalked.csv ${hucNumber}/demDerived_reaches_split_filtered_addedAttributes_crosswalked.gpkg ${hucNumber}/demDerived_streamPixels.tif ${hucNumber}/gw_catchments_reaches_filtered_addedAttributes_crosswalked.gpkg ${hucNumber}/gw_catchments_reaches_filtered_addedAttributes.tif ${hucNumber}/crosswalk_table.csv  ${hucNumber}/hydroTable_rp_bf_lmtdischarge_cda.csv # ${hucNumber}/slopes_dinf.tif  # ${hucNumber}/rem_zeroed_masked.tif # ${hucNumber}/filegdb.zip 
 echo "$hucNumber output $odatadir/${hucNumber}.zip"
 
 # free disk space
